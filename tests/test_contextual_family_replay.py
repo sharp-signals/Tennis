@@ -253,18 +253,27 @@ def test_prior_h2h_is_context_not_a_prefitted_weight():
     }]
 
 
-def test_laver_cup_is_factual_but_has_zero_h2h_pricing_impact():
+def test_laver_cup_is_factual_but_has_zero_predictive_impact():
     competitive = _match("20260101", "Alpha", "Beta")
     competitive["tourney_name"] = "History Open"
     laver = _match("20260102", "Beta", "Alpha")
     laver["tourney_name"] = "Laver Cup"
+    arguments = {
+        "universe": "atp",
+        "player_a": "Beta", "player_b": "Alpha",
+        "cutoff": pd.Timestamp("2026-01-05").date(), "surface": "Hard",
+        "rank_a": 40, "rank_b": 20,
+    }
+    baseline = build_contextual_target_row(
+        pd.DataFrame([competitive]), **arguments,
+    )
     target = build_contextual_target_row(
-        pd.DataFrame([competitive, laver]), universe="atp",
-        player_a="Beta", player_b="Alpha",
-        cutoff=pd.Timestamp("2026-01-05").date(), surface="Hard",
-        rank_a=40, rank_b=20,
+        pd.DataFrame([competitive, laver]), **arguments,
     )
 
+    assert target["features"] == baseline["features"]
+    assert target["samples"] == baseline["samples"]
+    assert target["family_states"] == baseline["family_states"]
     assert target["samples"]["h2h"] == 1
     assert target["features"]["h2h_win_share_margin"] == 1.0
     audit = target["candidate_equation_audit"]["matchup_h2h"]
@@ -277,9 +286,25 @@ def test_laver_cup_is_factual_but_has_zero_h2h_pricing_impact():
     )
     assert excluded["eligible_for_pricing"] is False
     assert excluded["exclusion_reason"] == "NON_COMPETITIVE_H2H"
+    policy = target["candidate_equation_audit"][
+        "non_competitive_event_policy"
+    ]
+    assert policy["version"] == "zero-predictive-impact-v1"
+    assert policy["predictive_impact"] == 0
+    assert [row["tournament"] for row in policy["excluded_events"]] == [
+        "Laver Cup",
+    ]
+    tier_ledger = target["candidate_equation_audit"][
+        "recent_form_tier_reliable_v5"
+    ]["tier_win_credit"]
+    assert all(
+        row["tournament"] != "Laver Cup"
+        for side in ("a_ledger", "b_ledger")
+        for row in tier_ledger[side]
+    )
 
 
-def test_chronological_replay_excludes_laver_cup_from_future_h2h():
+def test_chronological_replay_excludes_laver_cup_from_every_feature():
     laver = _match("20260101", "Alpha", "Beta")
     laver["tourney_name"] = "Laver Cup"
     target = _match("20260102", "Alpha", "Beta")
@@ -288,6 +313,13 @@ def test_chronological_replay_excludes_laver_cup_from_future_h2h():
         pd.DataFrame([laver, target]), universe="atp",
     )
 
+    assert len(rows) == 1
+    assert rows[-1]["samples"]["recent_a"] == 0
+    assert rows[-1]["samples"]["recent_b"] == 0
+    assert rows[-1]["samples"]["surface_a"] == 0
+    assert rows[-1]["samples"]["surface_b"] == 0
+    assert rows[-1]["samples"]["service_surface_a"] == 0
+    assert rows[-1]["samples"]["service_surface_b"] == 0
     assert rows[-1]["samples"]["h2h"] == 0
     assert rows[-1]["features"]["h2h_win_share_margin"] is None
 

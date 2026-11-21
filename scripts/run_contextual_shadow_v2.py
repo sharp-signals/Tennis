@@ -25,7 +25,7 @@ from src import fetch_data, match_identity_v2  # noqa: E402
 from src.contextual_family_replay import (  # noqa: E402
     apply_h2h_override,
     build_contextual_target_row,
-    is_non_competitive_h2h_tournament,
+    is_non_competitive_tournament,
 )
 from src.contextual_shadow_activation_v2 import activation_state  # noqa: E402
 from src.contextual_shadow_handicap_v2 import (  # noqa: E402
@@ -193,7 +193,7 @@ def _provider_h2h_override(
                 info = {}
             tournament_name = tournament_name or str(info.get("name") or "")
             surface = surface or info.get("surface")
-        if is_non_competitive_h2h_tournament(tournament_name):
+        if is_non_competitive_tournament(tournament_name):
             excluded.append({"tournament": tournament_name, "reason": "NON_COMPETITIVE"})
             continue
         winner = row.get("match_winner") or row.get("winnerId") or row.get("winner")

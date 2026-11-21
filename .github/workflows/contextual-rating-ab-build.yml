@@ -159,3 +159,11 @@ jobs:
           name: contextual-unanimous-consensus-v18-contracts
           path: .tmp/v18/*.json
           if-no-files-found: error
+      - name: Guardar release global versionado
+        uses: actions/upload-artifact@v7
+        with:
+          name: fenzobot-contextual-release-v22
+          path: |
+            data/models/fenzobot-contextual-2026-11.json
+            data/models/fenzobot-contextual-2026-11-manifest.json
+          if-no-files-found: error
