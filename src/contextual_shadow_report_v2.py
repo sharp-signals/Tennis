@@ -1137,10 +1137,17 @@ def _family_detail_html(
         if items:
             structural = f'<div class="context-grid">{"".join(items)}</div>'
     if family.get("key") == "matchup_h2h" and context:
+        surface_matches = int(_number(context.get("eligible_surface_matches")) or 0)
+        surface_a_wins = int(_number(context.get("eligible_surface_a_wins")) or 0)
+        surface_score = (
+            f'{players["a"]["name"]} {surface_a_wins}–'
+            f'{surface_matches - surface_a_wins} {players["b"]["name"]}'
+            if surface_matches > 0 else "0"
+        )
         h2h_items = (
             ("H2H factual encontrado", context.get("raw_matches")),
             ("H2H competitivo usado", context.get("eligible_matches")),
-            ("No piso atual", context.get("eligible_surface_matches")),
+            ("No piso atual · contexto informativo", surface_score),
             ("Exibições excluídas do cálculo", context.get("excluded_non_competitive")),
         )
         structural += '<div class="context-grid">' + ''.join(
@@ -1243,6 +1250,40 @@ def _player_card(
       </article>"""
 
 
+def _sensitivity_flip_family_names(view: Mapping[str, Any]) -> list[str]:
+    players = view.get("players") or {}
+    probability_a = _number((players.get("a") or {}).get("probability"))
+    if probability_a is None or probability_a == 0.5:
+        return []
+    central_a = probability_a > 0.5
+    labels = {
+        "recent_form": "Forma recente ajustada",
+        "structural_strength": "Força estrutural",
+        "surface_conditions": "Superfície e condições",
+        "matchup_h2h": "Matchup e confronto direto",
+        "serve_return": "Serviço e resposta",
+        **{
+            str(item.get("key")): str(item.get("label") or item.get("key"))
+            for item in view.get("families") or []
+        },
+    }
+    flipped: list[str] = []
+    for scenario in (view.get("family_sensitivity") or {}).get("scenarios") or []:
+        without = _number(scenario.get("probability_model_a_without_family"))
+        if without is None or without == 0.5:
+            continue
+        if (without > 0.5) != central_a:
+            key = str(scenario.get("family"))
+            flipped.append(labels.get(key, key))
+    return flipped
+
+
+def _natural_list(items: list[str]) -> str:
+    if len(items) < 2:
+        return items[0] if items else "nenhuma família identificada"
+    return ", ".join(items[:-1]) + " e " + items[-1]
+
+
 def _market_review_html(view: Mapping[str, Any]) -> str:
     review = view.get("market_review") or {}
     status = review.get("status")
@@ -1274,9 +1315,16 @@ def _market_review_html(view: Mapping[str, Any]) -> str:
             'handicaps sugeridos.</div>'
         )
     elif status == "SENSITIVE_EDGE_UNCONFIRMED":
+        flip_names = _sensitivity_flip_family_names(view)
+        flip_copy = (
+            f'{len(flip_names)} famílias ({_natural_list(flip_names)}) conseguem'
+            if len(flip_names) > 1
+            else f'{flip_names[0]} consegue' if flip_names
+            else 'Uma família consegue'
+        )
         body = (
             '<div class="review-empty"><b>Edge não confirmado num jogo sensível.</b> '
-            'Uma família consegue mudar o lado favorito numa zona próxima de '
+            f'{_e(flip_copy)} mudar o lado favorito numa zona próxima de '
             '50/50. O pricing fica visível, mas não são sugeridos Moneyline nem '
             'handicaps.</div>'
         )
@@ -1641,6 +1689,15 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         str(item.get("key")): str(item.get("label") or item.get("key"))
         for item in view.get("families") or []
     }
+    flip_names = _sensitivity_flip_family_names(view)
+    flip_subject = (
+        f'{len(flip_names)} famílias ({_natural_list(flip_names)})'
+        if len(flip_names) != 1 else flip_names[0]
+    ) if flip_names else family_labels.get(
+        str(dominant_family), str(dominant_family)
+    )
+    flip_verb = "podem" if len(flip_names) > 1 else "pode"
+    influence_verb = "têm" if len(flip_names) > 1 else "tem"
     if dependency_grade == "CRITICAL_DEPENDENCE":
         direct_read = (
             f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
@@ -1657,7 +1714,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         direct_read = (
             f"Estimativa central: {preferred_name} {_pct(players[preferred]['probability'])}. "
             f"Leitura {_e('sensível em jogo equilibrado' if dependency_grade == 'BALANCED_SENSITIVE' else 'com dependência material')}: "
-            f"{family_labels.get(str(dominant_family), dominant_family)} pode mudar o lado, mas a previsão permanece visível com incerteza reforçada."
+            f"{flip_subject} {flip_verb} mudar o lado, mas a previsão permanece visível com incerteza reforçada."
         )
     elif view["model_status"] == "READY_FOR_PROSPECTIVE_SHADOW":
         direct_read = (
@@ -1684,8 +1741,8 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         )
     robustness_copy = {
         "ROBUST": "Nenhuma família isolada muda o lado favorito.",
-        "BALANCED_SENSITIVE": "Uma família muda o lado apenas dentro de uma zona próxima de 50/50.",
-        "MATERIAL_DEPENDENCE": "Uma família tem influência material; a faixa de fair odd incorpora essa sensibilidade.",
+        "BALANCED_SENSITIVE": f"{flip_subject} {flip_verb} mudar o lado apenas dentro de uma zona próxima de 50/50.",
+        "MATERIAL_DEPENDENCE": f"{flip_subject} {influence_verb} influência material; a faixa de fair odd incorpora essa sensibilidade.",
         "CRITICAL_DEPENDENCE": "Uma família isolada sustenta uma vantagem forte; o jogo fica bloqueado para decisão.",
     }.get(dependency_grade, "Robustez não classificada.")
     if authorised_lead:
@@ -1717,7 +1774,19 @@ def render_report_html(view: Mapping[str, Any]) -> str:
         and model_side in {"a", "b"}
         and value_side != model_side
     )
-    if market_review.get("status") == "CONTRARIAN_PRICE_ONLY":
+    market_status = market_review.get("status")
+    market_heading = (
+        "Divergência de mercado"
+        if market_status == "SENSITIVE_EDGE_UNCONFIRMED"
+        else "Valor Moneyline"
+    )
+    if market_status == "SENSITIVE_EDGE_UNCONFIRMED":
+        value_copy = (
+            f"{players[value_side]['name']} · preço acima da fair, por auditar"
+            if value_side in {"a", "b"}
+            else "Preço divergente, por auditar"
+        )
+    elif market_status == "CONTRARIAN_PRICE_ONLY":
         value_copy = (
             f"Sinal contrarian não confirmado · preço em "
             f"{players[value_side]['name']} sem apoio das famílias"
@@ -1972,7 +2041,7 @@ def render_report_html(view: Mapping[str, Any]) -> str:
     <div class="decision-strip">
       <div><span>Favorito do modelo</span><b>{_e(preferred_name)} · {_pct(players[preferred]['probability'])}</b></div>
       <div><span>Faixa justa do favorito</span><b>{_odd(preferred_fair['lower'])}–{_odd(preferred_fair['upper'])}</b></div>
-      <div><span>Valor Moneyline</span><b>{_e(value_copy)}</b></div>
+      <div><span>{_e(market_heading)}</span><b>{_e(value_copy)}</b></div>
     </div>
     <div class="robustness {robustness_class}"><b>{robustness_title}</b><span>{_e(sensitive_copy)}</span></div>
     <div class="consensus"><div class="consensus-summary"><b>Vantagem global {_e(global_intensity)}</b>

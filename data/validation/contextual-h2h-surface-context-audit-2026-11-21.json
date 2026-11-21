@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "mode": "READ_ONLY_CHRONOLOGICAL_AUDIT",
+  "source_replay_frozen_at": "2026-11-19",
+  "market_used": false,
+  "production_effect": false,
+  "comparison": "h2h_global_plus_surface_vs_h2h_global",
+  "universes": {
+    "atp": {
+      "paired_holdout_targets": 2357,
+      "global": {
+        "log_loss": 0.666077,
+        "brier": 0.236725,
+        "accuracy_pct": 60.33,
+        "ece_10": 0.031823
+      },
+      "global_plus_surface": {
+        "log_loss": 0.665654,
+        "brier": 0.236541,
+        "accuracy_pct": 60.29,
+        "ece_10": 0.028142
+      },
+      "log_loss_gain": 0.000423,
+      "gain_95pct_ci": [-0.000936, 0.001781],
+      "status": "INCONCLUSIVE"
+    },
+    "wta": {
+      "paired_holdout_targets": 2066,
+      "global": {
+        "log_loss": 0.673536,
+        "brier": 0.240306,
+        "accuracy_pct": 59.34,
+        "ece_10": 0.034936
+      },
+      "global_plus_surface": {
+        "log_loss": 0.67437,
+        "brier": 0.24071,
+        "accuracy_pct": 59.34,
+        "ece_10": 0.036681
+      },
+      "log_loss_gain": -0.000835,
+      "gain_95pct_ci": [-0.001424, -0.000245],
+      "status": "REJECTED"
+    }
+  },
+  "decision": "KEEP_GLOBAL_H2H_ACTIVE_SHOW_SURFACE_H2H_AS_INFORMATIONAL_CONTEXT"
+}
