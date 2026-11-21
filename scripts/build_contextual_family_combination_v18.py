@@ -31,6 +31,7 @@ from src.contextual_family_combination_v18 import (
     predict_contextual_combination_v18,
 )
 from src.contextual_family_replay import _split
+from src.stable_json import stabilize_floats
 
 
 def _temporary_contract(
@@ -263,7 +264,7 @@ def main() -> int:
         )
         for universe in ("atp", "wta")
     }
-    contract = {
+    contract = stabilize_floats({
         "schema_version": 1,
         "model_version": MODEL_VERSION,
         "mode": "SHADOW_ONLY",
@@ -271,7 +272,7 @@ def main() -> int:
         "market_used": False,
         "production_effect": False,
         "promotion_authorized": False,
-    }
+    })
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(contract, ensure_ascii=False, indent=2) + "\n",
