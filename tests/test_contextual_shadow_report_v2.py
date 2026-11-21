@@ -544,6 +544,8 @@ class ContextualShadowReportTests(unittest.TestCase):
         }]}
         h2h["context_audit"] = {
             "eligible_matches": 2,
+            "eligible_surface_matches": 1,
+            "eligible_surface_a_wins": 1,
             "matches": [
                 {
                     "event_date": "2026-10-01", "tournament": "Indoor Open",
@@ -568,6 +570,7 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("Alpha Player", html)
         self.assertIn("Beta Player", html)
         self.assertIn("Alpha Player 1–1 Beta Player", html)
+        self.assertIn("Alpha Player 1–0 Beta Player", html)
         self.assertIn("6-4 6-3", html)
 
     def test_external_h2h_evidence_enriches_frozen_prediction(self):
@@ -741,7 +744,16 @@ class ContextualShadowReportTests(unittest.TestCase):
             "favorite_confirmed": False,
             "dependency_grade": "BALANCED_SENSITIVE",
             "dominant_family_if_unstable": "structural_strength",
-            "scenarios": [],
+            "scenarios": [
+                {
+                    "family": "recent_form",
+                    "probability_model_a_without_family": 0.49,
+                },
+                {
+                    "family": "surface_conditions",
+                    "probability_model_a_without_family": 0.48,
+                },
+            ],
         }
         view = report.build_report_view_model(prediction, market())
         self.assertEqual(
@@ -752,6 +764,11 @@ class ContextualShadowReportTests(unittest.TestCase):
         html = report.render_report_html(view)
         self.assertIn("JOGO EQUILIBRADO", html)
         self.assertIn("Edge não confirmado num jogo sensível", html)
+        self.assertIn("2 famílias", html)
+        self.assertIn("Forma recente ajustada", html)
+        self.assertIn("Superfície e condições", html)
+        self.assertIn("Divergência de mercado", html)
+        self.assertNotIn("<span>Valor Moneyline</span>", html)
         self.assertNotIn("ODD PARA CONSIDERAR", html)
 
     def test_authorised_primary_family_lead_is_explained_not_blocked(self):

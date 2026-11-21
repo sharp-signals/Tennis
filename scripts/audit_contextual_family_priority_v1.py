@@ -238,8 +238,10 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
         for row in strong
     )
     reliability = {}
+    reliability_predictions: dict[str, list[float | None]] = {}
     for profile, model in reliability_models.items():
         tested = predict_family_equation(holdout, _runtime_model(model))
+        reliability_predictions[profile] = tested
         paired = [
             index for index in range(len(holdout))
             if baseline[index] is not None and tested[index] is not None
@@ -262,6 +264,24 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
             ),
             "candidate_coefficients": model.get("coefficients"),
         }
+    global_profile = "h2h_reliability_curve_v3"
+    context_profile = "h2h_reliability_context_v3"
+    direct_indexes = [
+        index for index in range(len(holdout))
+        if reliability_predictions[global_profile][index] is not None
+        and reliability_predictions[context_profile][index] is not None
+    ]
+    direct_targets = np.asarray([
+        float(holdout[index]["target_a_win"]) for index in direct_indexes
+    ])
+    direct_global = np.asarray([
+        reliability_predictions[global_profile][index]
+        for index in direct_indexes
+    ])
+    direct_context = np.asarray([
+        reliability_predictions[context_profile][index]
+        for index in direct_indexes
+    ])
     return {
         "strong_rule": "at_least_5_and_direction_consistency_at_least_80pct",
         "strong_holdout_sample": len(strong),
@@ -276,6 +296,18 @@ def _h2h_audit(split: dict[str, list[dict]]) -> dict:
         ),
         "candidate_coefficients": candidate_model.get("coefficients"),
         "reliability_candidates": reliability,
+        "surface_context_vs_global": {
+            "paired_holdout_targets": len(direct_indexes),
+            "global": _metrics(
+                direct_targets, direct_global, total_targets=len(holdout),
+            ),
+            "global_plus_surface": _metrics(
+                direct_targets, direct_context, total_targets=len(holdout),
+            ),
+            "paired_gain": _paired_probability_gain(
+                direct_targets, direct_global, direct_context,
+            ),
+        },
     }
 
 
