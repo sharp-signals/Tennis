@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, call, patch
 
 from src import fetch_data
@@ -109,6 +109,58 @@ class FixtureResilienceTests(unittest.TestCase):
         self.assertTrue(all(match["_tour"] == "atp" for match in actual))
         self.assertEqual(request.call_count, 2)
         self.assertTrue(fetch_data._fixtures_cache_dirty)
+
+    def test_recent_tournament_cache_is_refreshed_after_all_matches_started(self):
+        fetch_data.RAPIDAPI_KEY = "offline-test"
+        now = datetime.now(timezone.utc)
+        fetch_data._fixtures_cache = {
+            "torneio:21364": {
+                "fetched_at": (now - timedelta(hours=1)).isoformat(),
+                "data": [{
+                    "id": 101,
+                    "date": (now - timedelta(hours=2)).isoformat(),
+                    "player1": {"name": "Semi-finalist A"},
+                    "player2": {"name": "Semi-finalist B"},
+                }],
+            }
+        }
+        final = {
+            "id": 102,
+            "date": (now + timedelta(hours=18)).isoformat(),
+            "player1": {"name": "Finalist A"},
+            "player2": {"name": "Finalist B"},
+        }
+        response = Mock()
+        response.json.return_value = {"data": [final], "hasNextPage": False}
+
+        with patch.object(fetch_data, "_rapidapi_get", return_value=response) as request:
+            actual = fetch_data.fetch_tournament_fixtures(21364, "atp")
+
+        request.assert_called_once()
+        self.assertEqual([match["id"] for match in actual], [102])
+        self.assertEqual(fetch_data._fixtures_cache["torneio:21364"]["data"], actual)
+
+    def test_recent_tournament_cache_with_future_match_still_saves_quota(self):
+        fetch_data.RAPIDAPI_KEY = "offline-test"
+        now = datetime.now(timezone.utc)
+        future = {
+            "id": 102,
+            "date": (now + timedelta(hours=18)).isoformat(),
+            "player1": {"name": "Finalist A"},
+            "player2": {"name": "Finalist B"},
+        }
+        fetch_data._fixtures_cache = {
+            "torneio:21364": {
+                "fetched_at": (now - timedelta(hours=1)).isoformat(),
+                "data": [future],
+            }
+        }
+
+        with patch.object(fetch_data, "_rapidapi_get") as request:
+            actual = fetch_data.fetch_tournament_fixtures(21364, "atp")
+
+        request.assert_not_called()
+        self.assertEqual(actual, [future])
 
     def test_malformed_fixture_payload_returns_empty_list(self):
         fetch_data.RAPIDAPI_KEY = "offline-test"
