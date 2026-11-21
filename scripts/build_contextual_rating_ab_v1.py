@@ -32,6 +32,7 @@ from src.contextual_family_combination_v2 import (
     combine_contextual_families_v2,
 )
 from src.contextual_family_replay import _split
+from src.stable_json import stabilize_floats
 
 
 PROFILES = {
@@ -162,7 +163,7 @@ def main() -> int:
             )
         ],
     }
-    contract = {
+    contract = stabilize_floats({
         "schema_version": 1,
         "experiment_id": "contextual-rating-ab-v1",
         "mode": "PROSPECTIVE_SHADOW_AB_ONLY",
@@ -176,7 +177,7 @@ def main() -> int:
         "paper_eligible": False,
         "green_eligible": False,
         "promotion_authorized": False,
-    }
+    })
     canonical = json.dumps(contract, sort_keys=True, separators=(",", ":"))
     contract["configuration_fingerprint"] = hashlib.sha256(
         canonical.encode()
