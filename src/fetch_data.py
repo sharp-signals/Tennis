@@ -9614,8 +9614,14 @@ def fetch_tournament_fixtures(tournament_id: int, tour: str) -> list[dict]:
             # rebentar (16/08/2026, ver nota em fetch_player_hand)
             age_hours = None
         if age_hours is not None and age_hours < FIXTURES_CACHE_MAX_AGE_HOURS:
-            print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
-            return cached["data"]
+            cached_data = cached.get("data")
+            if not _tournament_fixture_cache_requires_refresh(cached_data):
+                print(f"[info] fixtures {cache_key} vindas da cache local (idade: {age_hours:.1f}h).")
+                return cached_data
+            print(
+                f"[info] fixtures {cache_key}: cache de {age_hours:.1f}h "
+                "ignorada porque não contém nenhum jogo futuro."
+            )
 
     if not RAPIDAPI_KEY:
         print("[aviso] RAPIDAPI_KEY não definido — sem fixtures desta fonte.")
@@ -9886,6 +9892,35 @@ def _fixture_start_utc(match: dict) -> Optional[datetime]:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _tournament_fixture_cache_requires_refresh(
+    matches: object, *, now: Optional[datetime] = None,
+) -> bool:
+    """Refresh active tournaments once their cached schedule is exhausted.
+
+    A cache entry can still be younger than the global four-hour TTL after a
+    semi-final has ended. Reusing that snapshot hides a newly published final.
+    Empty/malformed snapshots and snapshots whose dated fixtures have all
+    started are therefore refreshed immediately. A snapshot containing at
+    least one future fixture keeps the normal quota-saving TTL.
+    """
+    if not isinstance(matches, list) or not matches:
+        return True
+    reference = now or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    reference = reference.astimezone(timezone.utc)
+    starts = [
+        start
+        for start in (
+            _fixture_start_utc(match)
+            for match in matches
+            if isinstance(match, dict)
+        )
+        if start is not None
+    ]
+    return not starts or all(start <= reference for start in starts)
 
 
 def _exclude_unresolved_downstream_fixtures(
