@@ -1130,7 +1130,8 @@ def h2h_reliability_curve(margin: float | None, count: int) -> float | None:
     return float(margin) * count / (count + 2.0) * math.sqrt(count)
 
 
-NON_COMPETITIVE_H2H_MARKERS = (
+NON_COMPETITIVE_EVENT_POLICY_VERSION = "zero-predictive-impact-v1"
+NON_COMPETITIVE_EVENT_MARKERS = (
     "exhibition",
     "world tennis league",
     "laver cup",
@@ -1138,10 +1139,15 @@ NON_COMPETITIVE_H2H_MARKERS = (
 )
 
 
-def is_non_competitive_h2h_tournament(value: Any) -> bool:
-    """Return whether a factual meeting must have zero H2H pricing impact."""
+def is_non_competitive_tournament(value: Any) -> bool:
+    """Return whether an event is factual-only and has zero pricing impact."""
     normalized = str(value or "").strip().casefold()
-    return any(marker in normalized for marker in NON_COMPETITIVE_H2H_MARKERS)
+    return any(marker in normalized for marker in NON_COMPETITIVE_EVENT_MARKERS)
+
+
+def is_non_competitive_h2h_tournament(value: Any) -> bool:
+    """Compatibility alias for callers that only reconcile factual H2H."""
+    return is_non_competitive_tournament(value)
 
 
 def apply_h2h_override(
@@ -1348,6 +1354,7 @@ def build_contextual_target_row(
     service_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     pair_history: list[dict[str, Any]] = []
     pair_history_factual: list[dict[str, Any]] = []
+    excluded_non_competitive_events: list[dict[str, Any]] = []
     wanted = {model_a, model_b}
     material = material[
         material["_winner_key"].isin(wanted)
@@ -1365,6 +1372,27 @@ def build_contextual_target_row(
         is_primary = "challenger" not in str(competition_scope)
         match_surface_context = match["_surface_context"]
         match_venue, match_pace = match["_venue"], match["_pace"]
+        non_competitive = is_non_competitive_tournament(match["_tournament"])
+        if non_competitive:
+            excluded_non_competitive_events.append({
+                "event_date": event_date.isoformat(),
+                "tournament": _optional_text(match["_tournament"]),
+                "winner": winner,
+                "loser": loser,
+                "reason": "NON_COMPETITIVE_EVENT",
+            })
+            if is_primary and {winner, loser} == wanted:
+                pair_history_factual.append({
+                    "event_date": event_date,
+                    "surface": match_surface,
+                    "winner": winner,
+                    "surface_context": match_surface_context,
+                    "tournament": _optional_text(match["_tournament"]),
+                    "score": _optional_text(match["_score"]),
+                    "round": _optional_text(match["_round"]),
+                    "eligible_for_pricing": False,
+                })
+            continue
         rank_w = _positive_rank(match["_winner_rank"])
         rank_l = _positive_rank(match["_loser_rank"])
         winner_margin = _game_margin(match["_score"], won=True)
@@ -1421,12 +1449,9 @@ def build_contextual_target_row(
                 "score": _optional_text(match["_score"]),
                 "round": _optional_text(match["_round"]),
             }
-            pair_row["eligible_for_pricing"] = not (
-                is_non_competitive_h2h_tournament(pair_row["tournament"])
-            )
+            pair_row["eligible_for_pricing"] = True
             pair_history_factual.append(pair_row)
-            if pair_row["eligible_for_pricing"]:
-                pair_history.append(pair_row)
+            pair_history.append(pair_row)
 
     recent_a = _summarize_player_history(
         match_history[model_a], cutoff=cutoff, target_surface=target_surface,
@@ -1559,6 +1584,11 @@ def build_contextual_target_row(
         },
         "candidate_equation_audit": {
             **equation_audit,
+            "non_competitive_event_policy": {
+                "version": NON_COMPETITIVE_EVENT_POLICY_VERSION,
+                "predictive_impact": 0,
+                "excluded_events": excluded_non_competitive_events,
+            },
             "matchup_h2h": {
                 "source": "chronological_history",
                 "raw_matches": len(pair_history_factual),
@@ -1626,6 +1656,8 @@ def build_contextual_family_replay_rows(
     for event_date, day in material.groupby("_event_date", sort=True):
         for _, match in day.iterrows():
             if bool(match["_non_standard"]):
+                continue
+            if is_non_competitive_tournament(match["_tournament"]):
                 continue
             if (
                 target_scope is not None
@@ -1832,6 +1864,8 @@ def build_contextual_family_replay_rows(
         for _, match in day.iterrows():
             if bool(match["_non_standard"]):
                 continue
+            if is_non_competitive_tournament(match["_tournament"]):
+                continue
             winner = _name_key(match["_winner"])
             loser = _name_key(match["_loser"])
             if not winner or not loser or winner == loser:
@@ -1883,9 +1917,7 @@ def build_contextual_family_replay_rows(
                         **service, "event_date": event_date, "surface": surface,
                         "surface_context": surface_context,
                     })
-            if is_primary and not is_non_competitive_h2h_tournament(
-                match["_tournament"]
-            ):
+            if is_primary:
                 pair = tuple(sorted((winner, loser)))
                 pair_history[pair].append({
                     "event_date": event_date, "surface": surface, "winner": winner,

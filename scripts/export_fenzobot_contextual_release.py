@@ -8,10 +8,14 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.contextual_family_replay import (
+    NON_COMPETITIVE_EVENT_POLICY_VERSION,
+)
+
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 21
+RUNTIME_GENERATION = 22
 COMBINATION_VERSION = "contextual-family-combination-v18-unanimous-consensus"
 CALIBRATION_VERSION = "contextual-probability-uncertainty-v18"
 ACCEPTED_HISTORICAL_RELEASES = [
@@ -123,6 +127,12 @@ ACCEPTED_HISTORICAL_RELEASES = [
             "23cc90d7babe2a311136975de6c5ae227ac20e4e538bd36ff1c1ec54c9c8dc0c"
         ),
     },
+    {
+        "runtime_generation": 21,
+        "configuration_fingerprint": (
+            "8a4bd8c5b7659e6d42f0df8958d05768b57b520951d27c1dfe72d36740bfc43b"
+        ),
+    },
 ]
 
 
@@ -166,6 +176,7 @@ def build_release(
         "ranking_model": "contextual-ranking-v7.1",
         "family_combination": COMBINATION_VERSION,
         "probability_calibration": CALIBRATION_VERSION,
+        "noncompetitive_event_policy": NON_COMPETITIVE_EVENT_POLICY_VERSION,
         "runtime_generation": RUNTIME_GENERATION,
     }
     manifest_material = {

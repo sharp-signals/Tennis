@@ -228,12 +228,13 @@ def test_manifest_names_every_internal_component_without_global_version_ambiguit
         "ranking_model": "contextual-ranking-v7.1",
         "family_combination": "contextual-family-combination-v18-unanimous-consensus",
         "probability_calibration": "contextual-probability-uncertainty-v18",
-        "runtime_generation": 21,
+        "noncompetitive_event_policy": "zero-predictive-impact-v1",
+        "runtime_generation": 22,
     }
     assert manifest["promotion_authorized"] is False
     assert [item["runtime_generation"] for item in manifest[
         "accepted_historical_releases"
-    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    ]] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
     assert runtime["configuration_fingerprint"] == manifest["configuration_fingerprint"]
 
 
@@ -259,7 +260,7 @@ def test_prediction_exposes_release_components_probability_and_fair_odds():
     assert len(result["probability_interval_90_model_a"]) == 2
     assert result["fair_odd_model_a"]["central"] > 1.0
     assert len(result["families"]) == 5
-    assert result["runtime_generation"] == 21
+    assert result["runtime_generation"] == 22
     assert result["family_sensitivity"]["method"] == "LEAVE_ONE_FAMILY_OUT"
     assert all(
         "internal_trace" in family and family["internal_trace"]["status"] == "READY"
