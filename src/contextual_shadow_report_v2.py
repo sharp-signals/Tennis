@@ -636,11 +636,11 @@ def build_report_view_model(
             "conservative_ev_pct": None,
         }
     elif sensitivity.get("dependency_grade") == "BALANCED_SENSITIVE":
-        market_review.update({
-            "status": "SENSITIVE_EDGE_UNCONFIRMED",
-            "moneyline": None,
-            "handicap": None,
-        })
+        # Uma inversão leave-one-family-out perto de 50/50 é normal num jogo
+        # equilibrado. Mantemos o aviso para leitura humana, mas não anulamos
+        # um edge que já sobreviveu ao limite conservador. Dependências
+        # materiais/críticas continuam tratadas separadamente.
+        market_review["balanced_sensitivity_advisory"] = True
 
     if (
         market_review.get("status") == "CONSERVATIVE_POSITIVE"

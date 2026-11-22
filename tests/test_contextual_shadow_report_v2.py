@@ -737,8 +737,21 @@ class ContextualShadowReportTests(unittest.TestCase):
         self.assertIn("DEPENDÊNCIA CRÍTICA", html)
         self.assertIn("Mercados não formulados", html)
 
-    def test_balanced_dependency_remains_visible_without_false_fatal_block(self):
+    def test_balanced_dependency_warns_without_suppressing_conservative_edge(self):
         prediction = copy.deepcopy(observation())
+        prediction["contextual_shadow"].update({
+            "probability_model_a": 0.515,
+            "probability_model_b": 0.485,
+            "probability_interval_90_model_a": [0.48, 0.55],
+            "fair_odd_model_a": {
+                "central": 1.9417, "lower_odd": 1.8182,
+                "upper_odd": 2.0833,
+            },
+            "fair_odd_model_b": {
+                "central": 2.0619, "lower_odd": 1.9231,
+                "upper_odd": 2.2222,
+            },
+        })
         prediction["contextual_shadow"]["family_sensitivity"] = {
             "method": "LEAVE_ONE_FAMILY_OUT",
             "favorite_confirmed": False,
@@ -755,21 +768,29 @@ class ContextualShadowReportTests(unittest.TestCase):
                 },
             ],
         }
-        view = report.build_report_view_model(prediction, market())
-        self.assertEqual(
-            view["market_review"]["status"], "SENSITIVE_EDGE_UNCONFIRMED"
+        balanced_market = {
+            **market(),
+            "odds": {"a": 2.10, "b": 1.98},
+            "market_probability_devig": {"a": 0.485, "b": 0.515},
+        }
+        view = report.build_report_view_model(
+            prediction, balanced_market, None, handicap_evidence()
         )
-        self.assertIsNone(view["market_review"]["moneyline"])
-        self.assertIsNone(view["market_review"]["handicap"])
+        self.assertEqual(
+            view["market_review"]["status"], "CONSERVATIVE_POSITIVE"
+        )
+        self.assertTrue(
+            view["market_review"]["balanced_sensitivity_advisory"]
+        )
+        self.assertIsNotNone(view["market_review"]["moneyline"])
         html = report.render_report_html(view)
         self.assertIn("JOGO EQUILIBRADO", html)
-        self.assertIn("Edge não confirmado num jogo sensível", html)
+        self.assertIn("Edge também positivo no limite conservador", html)
         self.assertIn("2 famílias", html)
         self.assertIn("Forma recente ajustada", html)
         self.assertIn("Superfície e condições", html)
-        self.assertIn("Divergência de mercado", html)
-        self.assertNotIn("<span>Valor Moneyline</span>", html)
-        self.assertNotIn("ODD PARA CONSIDERAR", html)
+        self.assertIn("<span>Valor Moneyline</span>", html)
+        self.assertIn("FAIXA PARA CONSIDERAR", html)
 
     def test_authorised_primary_family_lead_is_explained_not_blocked(self):
         prediction = copy.deepcopy(observation())
