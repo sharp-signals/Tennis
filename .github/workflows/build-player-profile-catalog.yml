@@ -69,8 +69,12 @@ jobs:
           from pathlib import Path
           index = json.loads(Path("data/player_profiles/v2/index.json").read_text(encoding="utf-8"))
           players = index.get("players") or []
+          summary = json.loads(Path("data/player_profiles/v2/generation-summary.json").read_text(encoding="utf-8"))
           if not players:
               raise SystemExit("PLAYER_PROFILE_CATALOG_EMPTY")
+          skipped = sum((summary.get("skipped") or {}).values())
+          if skipped:
+              raise SystemExit(f"PLAYER_PROFILE_CATALOG_SKIPPED:{skipped}")
           if not Path("docs/jogadores/index.html").exists():
               raise SystemExit("PLAYER_PROFILE_CATALOG_HTML_MISSING")
           print(f"catalog_players={len(players)}")

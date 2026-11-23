@@ -91,12 +91,20 @@ def _player_row_index(history: pd.DataFrame) -> dict[str, set[object]]:
 def _rows_for_player(
     history: pd.DataFrame, row_index: dict[str, set[object]], player: str,
 ) -> pd.DataFrame:
+    identity_keys = _identity_keys(player)
     selected: set[object] = set()
-    for key in _identity_keys(player):
+    for key in identity_keys:
         selected.update(row_index.get(key, set()))
     if not selected:
-        return history.iloc[0:0].copy()
-    return history.loc[history.index.isin(selected)].copy()
+        result = history.iloc[0:0].copy()
+    else:
+        result = history.loc[history.index.isin(selected)].copy()
+    result.attrs["history_cache_key"] = (
+        "player_profile_subset",
+        history.attrs.get("history_cache_key"),
+        tuple(sorted(identity_keys)),
+    )
+    return result
 
 
 def generate_catalog(
