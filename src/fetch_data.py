@@ -3457,7 +3457,9 @@ def get_history(tour: str, tier: Optional[str] = None) -> pd.DataFrame:
         return df
 
 
-def get_historical_odds_history(tour: str) -> pd.DataFrame:
+def get_historical_odds_history(
+    tour: str, *, refresh_current: bool | None = None,
+) -> pd.DataFrame:
     """Devolve o histórico com odds observadas para a leitura por faixa.
 
     O TennisMyLife é a melhor fonte operacional para o histórico ATP, mas
@@ -3479,7 +3481,12 @@ def get_historical_odds_history(tour: str) -> pd.DataFrame:
 
         if normalized_tour == "atp":
             cache_dir = _SYSTEM_HISTORY_SNAPSHOTS_PATH.parent / "history_cache"
-            df = valuebetennis_history.load_history(cache_dir)
+            if refresh_current is None:
+                df = valuebetennis_history.load_history(cache_dir)
+            else:
+                df = valuebetennis_history.load_history(
+                    cache_dir, refresh_current=refresh_current,
+                )
             if df.empty:
                 # Compatibility fallback for installations that already have
                 # an authorised legacy ATP cache but have not populated the
