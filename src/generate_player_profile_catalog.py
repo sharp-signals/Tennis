@@ -262,17 +262,44 @@ def _season_table(metric: dict) -> str:
     )
 
 
+def _serve_return_table(metric: dict) -> str:
+    rows = []
+    for point in metric.get("value") or []:
+        cells = []
+        for key in (
+            "service_points_won_pct", "first_serve_points_won_pct",
+            "return_points_won_pct", "hold_pct", "break_pct",
+        ):
+            value = point.get(key)
+            cells.append(f"<td>{'—' if value is None else f'{float(value):.1f}%'}</td>")
+        rows.append(
+            f'<tr><th>{escape(str(point.get("label") or ""))}</th>'
+            f'<td>{int(point.get("matches") or 0)}</td>{"".join(cells)}</tr>'
+        )
+    if not rows:
+        return ""
+    return (
+        '<div class="table-wrap"><table><thead><tr><th>Contexto</th><th>Jogos</th>'
+        '<th>Pontos de serviço ganhos</th><th>1.º serviço ganho</th>'
+        '<th>Pontos de resposta ganhos</th><th>Hold</th><th>Break</th>'
+        f'</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
+    )
+
+
 def render_profile(profile: dict) -> str:
     player = profile.get("player") or {}
     sample = profile.get("overall_sample") or {}
     grouped: dict[str, list[dict]] = {}
     season_table = ""
     ranking_chart = ""
+    serve_return_table = ""
     for metric in profile.get("metrics") or []:
         if metric.get("metric_id") == "season_surface_evolution":
             season_table = _season_table(metric)
         if metric.get("metric_id") == "ranking_by_year":
             ranking_chart = _ranking_chart(metric)
+        if metric.get("metric_id") == "serve_return_context_breakdown":
+            serve_return_table = _serve_return_table(metric)
         grouped.setdefault(str(metric.get("family") or "other"), []).append(metric)
     sections = []
     for family, metrics in grouped.items():
@@ -280,6 +307,8 @@ def render_profile(profile: dict) -> str:
         extra = season_table if family == "surface_conditions" else ""
         if family == "structural_strength":
             extra += ranking_chart
+        if family == "serve_return":
+            extra += serve_return_table
         sections.append(
             f'<section><h2>{escape(FAMILY_LABELS.get(family, family))}</h2>'
             f'<div class="metrics">{cards}</div>{extra}</section>'
