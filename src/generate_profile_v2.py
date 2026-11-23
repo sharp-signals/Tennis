@@ -57,9 +57,13 @@ def rebuild_index(output_root: Path = OUTPUT_ROOT) -> Path:
 def generate_one(player: str, tour: str, output_root: Path = OUTPUT_ROOT) -> Path | None:
     normalized_tour = tour.strip().lower()
     history = fetch_data.get_history(normalized_tour)
+    odds_history = fetch_data.get_historical_odds_history(
+        normalized_tour, refresh_current=False,
+    )
     player_id = fetch_data.get_player_id_from_ranking(normalized_tour, player)
     profile = build_player_profile_v2_record(
         history, player, normalized_tour, player_id=player_id,
+        odds_history=odds_history,
     )
     if profile is None:
         return None

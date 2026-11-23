@@ -16,6 +16,7 @@ from . import fetch_data
 from .contextual_ranking import build_player_ranking_context
 from .player_profile_contract import (
     DESCRIPTIVE_ONLY,
+    assess_sample,
     MODEL_ACTIVE,
     build_profile_contract,
     make_metric,
@@ -44,6 +45,14 @@ def _history_dates(frame: pd.DataFrame) -> pd.Series:
     raw = source.astype("string").str.strip()
     compact = pd.to_datetime(raw, format="%Y%m%d", errors="coerce", utc=True)
     return compact.fillna(pd.to_datetime(raw, errors="coerce", utc=True))
+
+
+def _rows_before(played: pd.DataFrame, cutoff: datetime) -> pd.DataFrame:
+    if played.empty:
+        return played.copy()
+    rows = played.copy()
+    rows["_date"] = _history_dates(rows)
+    return rows[rows["_date"].notna() & (rows["_date"] < pd.Timestamp(cutoff))].copy()
 
 
 def _rank_for_player(row: pd.Series, player: str) -> float | None:
@@ -211,11 +220,206 @@ def _append_context_metrics(metrics: list[dict], played: pd.DataFrame, player: s
         ))
 
 
+def _append_recent_quality_metrics(
+    metrics: list[dict], played: pd.DataFrame, player: str, cutoff: datetime,
+) -> None:
+    dated = _rows_before(played, cutoff)
+    start = pd.Timestamp(cutoff) - pd.Timedelta(days=90)
+    recent = dated[dated["_date"] >= start].copy()
+    recent["_player_rank"] = recent.apply(lambda row: _rank_for_player(row, player), axis=1)
+    recent["_opponent_rank"] = recent.apply(lambda row: _opponent_rank(row, player), axis=1)
+    ranked = recent.dropna(subset=["_player_rank", "_opponent_rank"])
+    wins = ranked[ranked["winner_name"] == player]
+    losses = ranked[ranked["loser_name"] == player]
+    quality_wins = wins[wins["_opponent_rank"] < wins["_player_rank"]]
+    costly_losses = losses[losses["_opponent_rank"] > losses["_player_rank"]]
+
+    for metric_id, label, subset, denominator, event in (
+        (
+            "recent_90d_quality_wins",
+            "Vitórias sobre adversários melhor classificados · 90 dias",
+            quality_wins,
+            wins,
+            "quality_win",
+        ),
+        (
+            "recent_90d_costly_losses",
+            "Derrotas com adversários pior classificados · 90 dias",
+            costly_losses,
+            losses,
+            "costly_loss",
+        ),
+    ):
+        count = len(subset)
+        sample = len(denominator)
+        examples = []
+        for _, row in subset.sort_values("_date", ascending=False).head(5).iterrows():
+            opponent = row.get("loser_name") if row.get("winner_name") == player else row.get("winner_name")
+            examples.append({
+                "date": row["_date"].date().isoformat(),
+                "opponent": opponent,
+                "player_rank": round(float(row["_player_rank"]), 1),
+                "opponent_rank": round(float(row["_opponent_rank"]), 1),
+                "tournament": row.get("tourney_name"),
+            })
+        metrics.append(make_metric(
+            metric_id=metric_id,
+            label=label,
+            family="recent_form",
+            value=_win_rate(count, sample),
+            unit="rate_within_ranked_results",
+            sample_size=sample,
+            source="canonical_history_match_ranks",
+            model_role=DESCRIPTIVE_ONLY,
+            applicable=sample > 0,
+            context={
+                "event": event,
+                "count": count,
+                "ranked_result_sample": sample,
+                "window_days": 90,
+                "examples": examples,
+            },
+        ))
+
+
+def _append_season_surface_metrics(
+    metrics: list[dict], played: pd.DataFrame, player: str, cutoff: datetime,
+) -> None:
+    dated = _rows_before(played, cutoff)
+    if dated.empty:
+        series = []
+    else:
+        dated["_year"] = dated["_date"].dt.year
+        dated["_surface"] = dated.get(
+            "surface", pd.Series(index=dated.index, dtype=object)
+        ).fillna("").astype(str).str.strip().str.casefold()
+        series = []
+        for year in sorted(dated["_year"].dropna().unique()):
+            year_rows = dated[dated["_year"] == year]
+            point = {"year": int(year), "overall": _series_record(year_rows, player)}
+            for surface in ("hard", "clay", "grass"):
+                point[surface] = _series_record(
+                    year_rows[year_rows["_surface"] == surface], player,
+                )
+            series.append(point)
+    metrics.append(make_metric(
+        metric_id="season_surface_evolution",
+        label="Evolução por época e superfície",
+        family="surface_conditions",
+        value=series,
+        unit="season_surface_series",
+        sample_size=sum(point["overall"]["matches"] for point in series),
+        source="canonical_history",
+        model_role=DESCRIPTIVE_ONLY,
+        applicable=bool(series),
+        context={"surfaces": ["hard", "clay", "grass"]},
+    ))
+
+
+def _series_record(rows: pd.DataFrame, player: str) -> dict:
+    matches = len(rows)
+    wins = int((rows.get("winner_name", pd.Series(dtype=object)) == player).sum())
+    return {
+        "matches": matches,
+        "wins": wins,
+        "losses": max(0, matches - wins),
+        "win_rate": _win_rate(wins, matches),
+        "sample_assessment": assess_sample(matches, applicable=matches > 0),
+    }
+
+
+def _append_odds_metrics(
+    metrics: list[dict], odds_history: pd.DataFrame, player: str, cutoff: datetime,
+) -> None:
+    if odds_history is None or odds_history.empty:
+        return
+    evidence = fetch_data.compute_historical_moneyline_margins(
+        odds_history, player, before=cutoff,
+    )
+    if not evidence:
+        return
+    source = str(evidence.get("source") or "historical_odds_cache")
+    basis = evidence.get("odds_basis")
+    favorite_n = 0
+    favorite_wins = 0
+    for band, cell in (evidence.get("buckets") or {}).items():
+        n = int(cell.get("n") or 0)
+        wins = int(cell.get("wins") or 0)
+        if not n:
+            continue
+        slug = band.replace(".", "_").replace("-", "_")
+        metrics.append(make_metric(
+            metric_id=f"moneyline_odds_band_{slug}",
+            label=f"Moneyline observada {band}",
+            family="historical_market_context",
+            value=round(wins / n, 6),
+            unit="win_rate",
+            sample_size=n,
+            source=source,
+            model_role=DESCRIPTIVE_ONLY,
+            context={
+                "wins": wins,
+                "losses": max(0, n - wins),
+                "odds_band": band,
+                "mean_game_diff": cell.get("mean_game_diff"),
+                "by_format": cell.get("by_format") or {},
+                "odds_basis": basis,
+            },
+        ))
+        try:
+            upper = float(band.split("-", 1)[1])
+        except (IndexError, TypeError, ValueError):
+            upper = 99.0
+        if upper <= 2.0:
+            favorite_n += n
+            favorite_wins += wins
+
+    if favorite_n:
+        metrics.append(make_metric(
+            metric_id="moneyline_observed_1_20_to_2_00",
+            label="Quando a odd observada ficou entre 1.20 e 2.00",
+            family="historical_market_context",
+            value=round(favorite_wins / favorite_n, 6),
+            unit="win_rate",
+            sample_size=favorite_n,
+            source=source,
+            model_role=DESCRIPTIVE_ONLY,
+            context={
+                "wins": favorite_wins,
+                "losses": favorite_n - favorite_wins,
+                "definition": "bandas disponíveis de odd observada entre 1.20 e 2.00",
+                "odds_basis": basis,
+            },
+        ))
+    underdog = evidence.get("underdog") or {}
+    underdog_n = int(underdog.get("n") or 0)
+    underdog_wins = int(underdog.get("wins") or 0)
+    if underdog_n:
+        metrics.append(make_metric(
+            metric_id="moneyline_observed_above_2_00",
+            label="Quando a odd observada foi superior a 2.00",
+            family="historical_market_context",
+            value=round(underdog_wins / underdog_n, 6),
+            unit="win_rate",
+            sample_size=underdog_n,
+            source=source,
+            model_role=DESCRIPTIVE_ONLY,
+            context={
+                "wins": underdog_wins,
+                "losses": underdog_n - underdog_wins,
+                "definition": "odd observada do jogador > 2.00",
+                "mean_game_diff": underdog.get("mean_game_diff"),
+                "by_format": underdog.get("by_format") or {},
+                "odds_basis": basis,
+            },
+        ))
+
 def build_player_profile_v2_record(
     history: pd.DataFrame,
     player: str,
     tour: str,
     *,
+    odds_history: pd.DataFrame | None = None,
     player_id: int | None = None,
     country: str | None = None,
     generated_at_utc: str | None = None,
@@ -332,6 +536,9 @@ def build_player_profile_v2_record(
         ))
 
     _append_context_metrics(metrics, played, resolved)
+    _append_recent_quality_metrics(metrics, played, resolved, cutoff_dt)
+    _append_season_surface_metrics(metrics, played, resolved, cutoff_dt)
+    _append_odds_metrics(metrics, odds_history, resolved, cutoff_dt)
 
     serve = fetch_data.compute_serve_return_stats(history, resolved, 20) or {}
     serve_matches = int(serve.get("matches_used") or 0)

@@ -21,6 +21,7 @@ class GeneratePlayerProfileV2Tests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as directory, \
              patch.object(generate_profile_v2.fetch_data, "get_history", return_value=pd.DataFrame()), \
+             patch.object(generate_profile_v2.fetch_data, "get_historical_odds_history", return_value=pd.DataFrame()), \
              patch.object(generate_profile_v2.fetch_data, "get_player_id_from_ranking", return_value=7), \
              patch.object(generate_profile_v2, "build_player_profile_v2_record", return_value=profile):
             root = Path(directory)
@@ -31,6 +32,9 @@ class GeneratePlayerProfileV2Tests(unittest.TestCase):
             self.assertEqual(index["players"][0]["name"], "João Sousa")
             self.assertTrue(index["players"][0]["has_critical_alert"])
             self.assertEqual(index["players"][0]["profile_path"], "atp/joao-sousa.json")
+            generate_profile_v2.fetch_data.get_historical_odds_history.assert_called_once_with(
+                "atp", refresh_current=False,
+            )
 
     def test_rebuild_index_is_sorted_by_tour_and_name(self):
         with tempfile.TemporaryDirectory() as directory:

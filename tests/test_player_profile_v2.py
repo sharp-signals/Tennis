@@ -70,6 +70,65 @@ class PlayerProfileV2BuilderTests(unittest.TestCase):
 
         self.assertIsNone(profile)
 
+    def test_recent_quality_and_season_surface_exclude_future_rows(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Player B",
+                "winner_rank": 30, "loser_rank": 10,
+                "tourney_date": 20261001, "surface": "Hard", "tourney_name": "Event 1",
+            },
+            {
+                "winner_name": "Player C", "loser_name": "Player A",
+                "winner_rank": 80, "loser_rank": 25,
+                "tourney_date": 20261015, "surface": "Clay", "tourney_name": "Event 2",
+            },
+            {
+                "winner_name": "Player A", "loser_name": "Player D",
+                "winner_rank": 20, "loser_rank": 5,
+                "tourney_date": 20261201, "surface": "Grass", "tourney_name": "Future",
+            },
+        ])
+        metrics = []
+        cutoff = pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime()
+
+        player_profile_v2._append_recent_quality_metrics(metrics, history, "Player A", cutoff)
+        player_profile_v2._append_season_surface_metrics(metrics, history, "Player A", cutoff)
+
+        by_id = {metric["metric_id"]: metric for metric in metrics}
+        self.assertEqual(by_id["recent_90d_quality_wins"]["context"]["count"], 1)
+        self.assertEqual(by_id["recent_90d_quality_wins"]["sample_size"], 1)
+        self.assertEqual(by_id["recent_90d_costly_losses"]["context"]["count"], 1)
+        season = by_id["season_surface_evolution"]["value"]
+        self.assertEqual(season[0]["overall"]["matches"], 2)
+        self.assertEqual(season[0]["hard"]["wins"], 1)
+        self.assertEqual(season[0]["grass"]["sample_assessment"]["status"], "NOT_APPLICABLE")
+
+    def test_historical_odds_metrics_keep_band_samples_and_are_descriptive(self):
+        odds = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Player B",
+                "date": "2026-01-10", "score": "6-4 6-4",
+                "B365W": 1.35, "B365L": 3.20, "best_of": 3,
+            },
+            {
+                "winner_name": "Player C", "loser_name": "Player A",
+                "date": "2026-02-10", "score": "6-3 6-4",
+                "B365W": 1.60, "B365L": 2.20, "best_of": 3,
+            },
+        ])
+        odds.attrs["source"] = "test_odds_cache"
+        metrics = []
+
+        player_profile_v2._append_odds_metrics(
+            metrics, odds, "Player A", pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime(),
+        )
+
+        by_id = {metric["metric_id"]: metric for metric in metrics}
+        self.assertEqual(by_id["moneyline_odds_band_1_31_1_40"]["sample_size"], 1)
+        self.assertEqual(by_id["moneyline_observed_1_20_to_2_00"]["value"], 1.0)
+        self.assertEqual(by_id["moneyline_observed_above_2_00"]["value"], 0.0)
+        self.assertTrue(all(metric["model_role"] == "DESCRIPTIVE_ONLY" for metric in metrics))
+
 
 if __name__ == "__main__":
     unittest.main()
