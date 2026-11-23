@@ -6,7 +6,7 @@
       "severity": "CRITICAL"
     }
   ],
-  "generated_at_utc": "2026-11-23T23:01:58.948637+00:00",
+  "generated_at_utc": "2026-11-23T23:51:53.802479+00:00",
   "metrics": [
     {
       "context": {
@@ -723,7 +723,8 @@
     {
       "context": {
         "surfaces": [
-          "hard",
+          "hard_outdoor",
+          "indoor",
           "clay",
           "grass"
         ]
@@ -767,7 +768,7 @@
             "win_rate": null,
             "wins": 0
           },
-          "hard": {
+          "hard_outdoor": {
             "losses": 6,
             "matches": 11,
             "sample_assessment": {
@@ -778,6 +779,18 @@
             },
             "win_rate": 0.454545,
             "wins": 5
+          },
+          "indoor": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
           },
           "overall": {
             "losses": 9,
@@ -818,7 +831,7 @@
             "win_rate": 0.0,
             "wins": 0
           },
-          "hard": {
+          "hard_outdoor": {
             "losses": 1,
             "matches": 2,
             "sample_assessment": {
@@ -829,6 +842,18 @@
             },
             "win_rate": 0.5,
             "wins": 1
+          },
+          "indoor": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
           },
           "overall": {
             "losses": 2,
@@ -1479,10 +1504,165 @@
     },
     {
       "context": {
+        "contexts": [
+          "overall",
+          "recent_90d",
+          "hard_outdoor",
+          "indoor",
+          "clay",
+          "grass"
+        ],
+        "window_days": 90
+      },
+      "family": "serve_return",
+      "label": "Serviço e resposta por contexto",
+      "metric_id": "serve_return_context_breakdown",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 16,
+      "source": "canonical_history_point_stats",
+      "unit": "serve_return_context_series",
+      "value": [
+        {
+          "break_pct": 15.981735159817351,
+          "context": "overall",
+          "first_serve_points_sample": 849.0,
+          "first_serve_points_won_pct": 70.6713780918728,
+          "hold_pct": 78.28054298642535,
+          "label": "Carreira · geral",
+          "matches": 16,
+          "return_games_sample": 219.0,
+          "return_points_sample": 1414.0,
+          "return_points_won_pct": 34.15841584158416,
+          "service_games_sample": 221.0,
+          "service_points_sample": 1377.0,
+          "service_points_won_pct": 63.25344952795933
+        },
+        {
+          "context": "recent_90d",
+          "label": "Últimos 90 dias",
+          "matches": 0
+        },
+        {
+          "break_pct": 18.452380952380953,
+          "context": "hard_outdoor",
+          "first_serve_points_sample": 656.0,
+          "first_serve_points_won_pct": 72.40853658536585,
+          "hold_pct": 79.06976744186046,
+          "label": "Carreira · Hard outdoor",
+          "matches": 12,
+          "return_games_sample": 168.0,
+          "return_points_sample": 1094.0,
+          "return_points_won_pct": 35.191956124314444,
+          "service_games_sample": 172.0,
+          "service_points_sample": 1068.0,
+          "service_points_won_pct": 64.04494382022472
+        },
+        {
+          "context": "indoor",
+          "label": "Carreira · Indoor",
+          "matches": 0
+        },
+        {
+          "break_pct": 8.823529411764707,
+          "context": "clay",
+          "first_serve_points_sample": 121.0,
+          "first_serve_points_won_pct": 63.63636363636363,
+          "hold_pct": 75.75757575757575,
+          "label": "Carreira · Clay",
+          "matches": 3,
+          "return_games_sample": 34.0,
+          "return_points_sample": 213.0,
+          "return_points_won_pct": 30.516431924882628,
+          "service_games_sample": 33.0,
+          "service_points_sample": 200.0,
+          "service_points_won_pct": 61.0
+        },
+        {
+          "break_pct": 5.882352941176471,
+          "context": "grass",
+          "first_serve_points_sample": 72.0,
+          "first_serve_points_won_pct": 66.66666666666667,
+          "hold_pct": 75.0,
+          "label": "Carreira · Grass",
+          "matches": 1,
+          "return_games_sample": 17.0,
+          "return_points_sample": 107.0,
+          "return_points_won_pct": 30.8411214953271,
+          "service_games_sample": 16.0,
+          "service_points_sample": 109.0,
+          "service_points_won_pct": 59.63302752293578
+        }
+      ]
+    },
+    {
+      "context": {
         "window": 20
       },
       "family": "serve_return",
-      "label": "Pontos ganhos no primeiro serviço",
+      "label": "Aces · últimos 20 jogos",
+      "metric_id": "serve_ace_recent",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 17,
+      "source": "canonical_history_point_stats",
+      "unit": "rate",
+      "value": 0.048
+    },
+    {
+      "context": {
+        "window": 20
+      },
+      "family": "serve_return",
+      "label": "Duplas faltas · últimos 20 jogos",
+      "metric_id": "serve_double_fault_recent",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 17,
+      "source": "canonical_history_point_stats",
+      "unit": "rate",
+      "value": 0.031
+    },
+    {
+      "context": {
+        "window": 20
+      },
+      "family": "serve_return",
+      "label": "Primeiro serviço dentro · últimos 20 jogos",
+      "metric_id": "serve_first_in_recent",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 17,
+      "source": "canonical_history_point_stats",
+      "unit": "rate",
+      "value": 0.601
+    },
+    {
+      "context": {
+        "window": 20
+      },
+      "family": "serve_return",
+      "label": "Pontos ganhos no primeiro serviço · últimos 20 jogos",
       "metric_id": "serve_first_won_recent",
       "model_role": "DESCRIPTIVE_ONLY",
       "sample_assessment": {
@@ -1501,7 +1681,7 @@
         "window": 20
       },
       "family": "serve_return",
-      "label": "Break points salvos",
+      "label": "Break points salvos · últimos 20 jogos",
       "metric_id": "serve_break_points_saved_recent",
       "model_role": "DESCRIPTIVE_ONLY",
       "sample_assessment": {
