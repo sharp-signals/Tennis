@@ -39,6 +39,24 @@ class PlayerProfileCatalogTests(unittest.TestCase):
         rows = catalog._rows_for_player(history, index, "Taylor Fritz")
         self.assertEqual(len(rows), 2)
 
+    def test_player_subsets_have_distinct_name_cache_keys(self):
+        history = pd.DataFrame([
+            {"winner_name": "Player A", "loser_name": "Opponent A"},
+            {"winner_name": "Player B", "loser_name": "Opponent B"},
+        ])
+        history.attrs["history_cache_key"] = "shared-parent"
+        index = catalog._player_row_index(history)
+        player_a = catalog._rows_for_player(history, index, "Player A")
+        player_b = catalog._rows_for_player(history, index, "Player B")
+
+        catalog.fetch_data._NAME_INDEX_CACHE.clear()
+        self.assertEqual(catalog.fetch_data.resolve_player_name(player_a, "Player A"), "Player A")
+        self.assertEqual(catalog.fetch_data.resolve_player_name(player_b, "Player B"), "Player B")
+        self.assertNotEqual(
+            player_a.attrs["history_cache_key"],
+            player_b.attrs["history_cache_key"],
+        )
+
     def test_active_player_selection_collapses_audited_aliases(self):
         history = pd.DataFrame([
             {"winner_name": "Taylor Harry Fritz", "loser_name": "Opponent", "tourney_date": 20261101},
