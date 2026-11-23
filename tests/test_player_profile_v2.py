@@ -7,6 +7,26 @@ from src import player_profile_v2
 
 
 class PlayerProfileV2BuilderTests(unittest.TestCase):
+    def test_played_rows_include_audited_name_aliases(self):
+        history = pd.DataFrame([
+            {"winner_name": "Taylor Harry Fritz", "loser_name": "Player B"},
+            {"winner_name": "Player C", "loser_name": "Taylor Fritz"},
+        ])
+        rows = player_profile_v2._played_rows(history, "Taylor Fritz")
+        self.assertEqual(len(rows), 2)
+
+    def test_recent_quality_accepts_empty_player_history(self):
+        metrics = []
+        player_profile_v2._append_recent_quality_metrics(
+            metrics,
+            pd.DataFrame(columns=["winner_name", "loser_name", "tourney_date"]),
+            "Player A",
+            pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime(),
+        )
+        self.assertEqual(len(metrics), 2)
+        self.assertTrue(all(metric["sample_size"] == 0 for metric in metrics))
+        self.assertTrue(all(metric["sample_assessment"]["status"] == "NOT_APPLICABLE" for metric in metrics))
+
     def test_builder_counts_only_selected_player_and_marks_low_sample(self):
         history = pd.DataFrame([
             {"winner_name": "Player A", "loser_name": "Player B"},
