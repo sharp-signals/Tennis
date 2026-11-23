@@ -218,11 +218,18 @@ def _ranking_chart(metric: dict) -> str:
     width = 680.0
     points = []
     labels = []
+    rank_labels = []
     for index, row in enumerate(values):
         x = 20.0 if len(values) == 1 else 20.0 + index * (width - 40.0) / (len(values) - 1)
         y = 20.0 + (float(row["typical_rank"]) - lowest) * 120.0 / span
         points.append(f"{x:.1f},{y:.1f}")
         labels.append(f'<text x="{x:.1f}" y="170" text-anchor="middle">{row["year"]}</text>')
+        rank = float(row["typical_rank"])
+        rank_text = f"#{rank:.0f}" if rank.is_integer() else f"#{rank:.1f}"
+        rank_labels.append(
+            f'<text class="rank-value" x="{x:.1f}" y="{max(12.0, y - 10.0):.1f}" '
+            f'text-anchor="middle">{rank_text}</text>'
+        )
     circles = "".join(
         f'<circle cx="{point.split(",")[0]}" cy="{point.split(",")[1]}" r="5"/>'
         for point in points
@@ -231,7 +238,8 @@ def _ranking_chart(metric: dict) -> str:
         '<div class="chart"><h3>Evolução do ranking típico</h3>'
         f'<svg viewBox="0 0 680 185" role="img" aria-label="Evolução anual do ranking"><polyline points="{" ".join(points)}"/>'
         f'{circles}'
-        f'{"".join(labels)}</svg><div class="chart-note">Quanto mais alto no gráfico, melhor o ranking.</div></div>'
+        f'{"".join(rank_labels)}{"".join(labels)}</svg>'
+        '<div class="chart-note">O número junto de cada ponto é o ranking típico dessa época.</div></div>'
     )
 
 
@@ -239,7 +247,7 @@ def _season_table(metric: dict) -> str:
     rows = []
     for point in metric.get("value") or []:
         cells = []
-        for key in ("overall", "hard", "clay", "grass"):
+        for key in ("overall", "hard_outdoor", "indoor", "clay", "grass"):
             record = point.get(key) or {}
             rate = record.get("win_rate")
             text = "—" if rate is None else f'{100 * float(rate):.1f}% ({record.get("matches", 0)})'
@@ -249,7 +257,7 @@ def _season_table(metric: dict) -> str:
         return ""
     return (
         '<div class="table-wrap"><table><thead><tr><th>Época</th><th>Geral</th>'
-        '<th>Hard</th><th>Clay</th><th>Grass</th></tr></thead><tbody>'
+        '<th>Hard outdoor</th><th>Indoor</th><th>Clay</th><th>Grass</th></tr></thead><tbody>'
         f'{"".join(rows)}</tbody></table></div>'
     )
 
@@ -294,6 +302,7 @@ def render_profile(profile: dict) -> str:
 def _styles() -> str:
     return """<style>
 :root{color-scheme:dark;--bg:#06131f;--panel:#0e2940;--line:#24506d;--text:#f5f8fb;--muted:#8fb4d0;--cyan:#42ddd4;--blue:#55a9ff;--warn:#ffc857}*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#04101a,#09233a);color:var(--text);font-family:Inter,Segoe UI,sans-serif}main{max-width:1180px;margin:auto;padding:30px 22px 60px}header{display:flex;justify-content:space-between;align-items:end;gap:24px;padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:22px}h1{font-size:clamp(34px,7vw,64px);margin:6px 0}.eyebrow{color:var(--cyan);font-weight:800;letter-spacing:.12em}.hero-stat{text-align:right}.hero-stat b{display:block;font-size:38px;color:var(--blue)}.hero-stat span,.meta,.sample,.record,footer{color:var(--muted)}.back{color:var(--cyan);text-decoration:none;display:inline-block;margin-bottom:18px}.alert{margin:18px 0;padding:16px;border:1px solid #805f19;background:#30270e;color:var(--warn);border-radius:14px;font-weight:700}.meta{margin:16px 4px 28px}section{margin-top:22px;padding:24px;background:rgba(14,41,64,.9);border:1px solid var(--line);border-radius:20px}h2{margin-top:0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.metric{padding:16px;background:#081d2d;border-radius:14px;border:1px solid #173d57}.metric-label{min-height:42px;color:#c9deed}.metric-value{font-size:26px;font-weight:800;color:var(--cyan);margin:8px 0}.bar{height:7px;background:#173d57;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan))}.sample{font-size:13px;margin-top:8px}.table-wrap{overflow:auto;margin-top:18px}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid var(--line)}.chart{margin-top:18px;padding:16px;background:#081d2d;border-radius:14px}.chart h3{margin:0 0 8px}.chart svg{width:100%;height:auto}.chart polyline{fill:none;stroke:var(--cyan);stroke-width:4}.chart circle{fill:var(--blue);stroke:white;stroke-width:2}.chart text{fill:var(--muted);font-size:13px}.chart-note{color:var(--muted);font-size:13px}footer{margin-top:28px;text-align:center}@media(max-width:600px){header{align-items:flex-start;flex-direction:column}.hero-stat{text-align:left}}
+.chart .rank-value{fill:var(--cyan);font-weight:800}
 </style>"""
 
 

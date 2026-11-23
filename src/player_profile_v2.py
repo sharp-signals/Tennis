@@ -304,11 +304,25 @@ def _append_season_surface_metrics(
         dated["_surface"] = dated.get(
             "surface", pd.Series(index=dated.index, dtype=object)
         ).fillna("").astype(str).str.strip().str.casefold()
+        indoor_source = dated.get(
+            "indoor", pd.Series(False, index=dated.index, dtype=object)
+        )
+        dated["_indoor"] = indoor_source.map(
+            lambda value: value is True
+            or str(value).strip().casefold() in {"1", "true", "yes", "indoor", "i"}
+        ) | dated["_surface"].str.contains(r"indoor|interior|intérieur|i\.hard", regex=True)
+        dated["_surface"] = dated["_surface"].map(
+            lambda value: "hard" if value in {"i.hard", "indoor hard", "hard indoor"} else value
+        )
         series = []
         for year in sorted(dated["_year"].dropna().unique()):
             year_rows = dated[dated["_year"] == year]
             point = {"year": int(year), "overall": _series_record(year_rows, player)}
-            for surface in ("hard", "clay", "grass"):
+            point["hard_outdoor"] = _series_record(
+                year_rows[(year_rows["_surface"] == "hard") & ~year_rows["_indoor"]], player,
+            )
+            point["indoor"] = _series_record(year_rows[year_rows["_indoor"]], player)
+            for surface in ("clay", "grass"):
                 point[surface] = _series_record(
                     year_rows[year_rows["_surface"] == surface], player,
                 )
@@ -323,7 +337,7 @@ def _append_season_surface_metrics(
         source="canonical_history",
         model_role=DESCRIPTIVE_ONLY,
         applicable=bool(series),
-        context={"surfaces": ["hard", "clay", "grass"]},
+        context={"surfaces": ["hard_outdoor", "indoor", "clay", "grass"]},
     ))
 
 
