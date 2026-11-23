@@ -12,7 +12,7 @@ from typing import Optional
 
 import pandas as pd
 
-from . import fetch_data
+from . import contextual_serve_return, fetch_data
 from .contextual_ranking import build_player_ranking_context
 from .player_profile_contract import (
     DESCRIPTIVE_ONLY,
@@ -353,6 +353,89 @@ def _series_record(rows: pd.DataFrame, player: str) -> dict:
     }
 
 
+def _serve_return_context(row: pd.Series) -> str | None:
+    surface = fetch_data._normalize_surface_family(row.get("surface"))
+    venue = fetch_data._row_indoor_outdoor_context(row)
+    if venue == "indoor":
+        return "indoor"
+    if surface in {"hard", "carpet"}:
+        return "hard_outdoor"
+    return surface if surface in {"clay", "grass"} else None
+
+
+def _append_serve_return_profile_metrics(
+    metrics: list[dict], played: pd.DataFrame, player: str, cutoff: datetime,
+) -> None:
+    dated = _rows_before(played, cutoff).sort_values("_date")
+    identity_keys = {fetch_data._normalize_name(player)}
+    for canonical, variants in fetch_data._HISTORICAL_EXACT_NAME_ALIASES.items():
+        family = {
+            fetch_data._normalize_name(canonical),
+            *(fetch_data._normalize_name(value) for value in variants),
+        }
+        if identity_keys & family:
+            identity_keys.update(family)
+
+    observations = []
+    for _, row in dated.iterrows():
+        score = str(row.get("score") or "")
+        if score and contextual_serve_return._NON_STANDARD.search(score):
+            continue
+        player_won = fetch_data._normalize_name(row.get("winner_name")) in identity_keys
+        extracted = contextual_serve_return._extract_match(row, player_won=player_won)
+        if extracted is None:
+            continue
+        observations.append({
+            **extracted,
+            "date": row["_date"],
+            "context": _serve_return_context(row),
+        })
+
+    cutoff_ts = pd.Timestamp(cutoff)
+    recent_from = cutoff_ts - pd.Timedelta(days=90)
+    groups = [
+        ("overall", "Carreira · geral", observations),
+        (
+            "recent_90d", "Últimos 90 dias",
+            [row for row in observations if row["date"] >= recent_from],
+        ),
+    ]
+    for key, label in (
+        ("hard_outdoor", "Hard outdoor"),
+        ("indoor", "Indoor"),
+        ("clay", "Clay"),
+        ("grass", "Grass"),
+    ):
+        groups.append((
+            key, f"Carreira · {label}",
+            [row for row in observations if row["context"] == key],
+        ))
+
+    values = []
+    for key, label, rows in groups:
+        aggregate = contextual_serve_return._aggregate(rows)
+        values.append({
+            "context": key,
+            "label": label,
+            **(aggregate or {"matches": 0}),
+        })
+    metrics.append(make_metric(
+        metric_id="serve_return_context_breakdown",
+        label="Serviço e resposta por contexto",
+        family="serve_return",
+        value=values,
+        unit="serve_return_context_series",
+        sample_size=len(observations),
+        source="canonical_history_point_stats",
+        model_role=DESCRIPTIVE_ONLY,
+        applicable=bool(observations),
+        context={
+            "contexts": ["overall", "recent_90d", "hard_outdoor", "indoor", "clay", "grass"],
+            "window_days": 90,
+        },
+    ))
+
+
 def _append_odds_metrics(
     metrics: list[dict], odds_history: pd.DataFrame, player: str, cutoff: datetime,
 ) -> None:
@@ -577,12 +660,16 @@ def build_player_profile_v2_record(
     _append_recent_quality_metrics(metrics, played, resolved, cutoff_dt)
     _append_season_surface_metrics(metrics, played, resolved, cutoff_dt)
     _append_odds_metrics(metrics, odds_history, resolved, cutoff_dt)
+    _append_serve_return_profile_metrics(metrics, played, resolved, cutoff_dt)
 
     serve = fetch_data.compute_serve_return_stats(history, resolved, 20) or {}
     serve_matches = int(serve.get("matches_used") or 0)
     for metric_id, label, key in (
-        ("serve_first_won_recent", "Pontos ganhos no primeiro serviço", "avg_first_serve_won_pct"),
-        ("serve_break_points_saved_recent", "Break points salvos", "avg_break_points_saved_pct"),
+        ("serve_ace_recent", "Aces · últimos 20 jogos", "avg_ace_pct"),
+        ("serve_double_fault_recent", "Duplas faltas · últimos 20 jogos", "avg_double_fault_pct"),
+        ("serve_first_in_recent", "Primeiro serviço dentro · últimos 20 jogos", "avg_first_serve_in_pct"),
+        ("serve_first_won_recent", "Pontos ganhos no primeiro serviço · últimos 20 jogos", "avg_first_serve_won_pct"),
+        ("serve_break_points_saved_recent", "Break points salvos · últimos 20 jogos", "avg_break_points_saved_pct"),
     ):
         raw_value = serve.get(key)
         metrics.append(make_metric(

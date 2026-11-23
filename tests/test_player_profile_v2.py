@@ -148,6 +148,37 @@ class PlayerProfileV2BuilderTests(unittest.TestCase):
         self.assertEqual(point["indoor"]["matches"], 1)
         self.assertEqual(point["indoor"]["wins"], 0)
 
+    def test_serve_return_profile_separates_contexts_and_exposes_return(self):
+        base = {
+            "tourney_date": 20260110, "surface": "Hard", "indoor": False,
+            "score": "6-4 6-4", "w_svpt": 100, "w_1stIn": 60,
+            "w_1stWon": 40, "w_2ndWon": 20, "w_bpSaved": 1,
+            "w_bpFaced": 2, "w_SvGms": 10, "l_svpt": 100,
+            "l_1stIn": 60, "l_1stWon": 35, "l_2ndWon": 15,
+            "l_bpSaved": 2, "l_bpFaced": 5, "l_SvGms": 10,
+        }
+        history = pd.DataFrame([
+            {**base, "winner_name": "Player A", "loser_name": "Player B"},
+            {
+                **base, "tourney_date": 20260210, "indoor": True,
+                "winner_name": "Player C", "loser_name": "Player A",
+            },
+        ])
+        metrics = []
+
+        player_profile_v2._append_serve_return_profile_metrics(
+            metrics, history, "Player A",
+            pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime(),
+        )
+
+        by_context = {row["context"]: row for row in metrics[0]["value"]}
+        self.assertEqual(by_context["hard_outdoor"]["matches"], 1)
+        self.assertEqual(by_context["indoor"]["matches"], 1)
+        self.assertEqual(by_context["hard_outdoor"]["service_points_won_pct"], 60.0)
+        self.assertEqual(by_context["hard_outdoor"]["return_points_won_pct"], 50.0)
+        self.assertEqual(by_context["hard_outdoor"]["hold_pct"], 90.0)
+        self.assertEqual(by_context["hard_outdoor"]["break_pct"], 30.0)
+
     def test_historical_odds_metrics_keep_band_samples_and_are_descriptive(self):
         odds = pd.DataFrame([
             {

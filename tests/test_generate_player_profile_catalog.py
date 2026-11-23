@@ -112,6 +112,16 @@ class PlayerProfileCatalogTests(unittest.TestCase):
                     "unit": "season_surface_series", "sample_size": 2,
                     "sample_assessment": {"label": "Amostra muito baixa"},
                     "source": "test", "model_role": "DESCRIPTIVE_ONLY", "context": {},
+                }, {
+                    "metric_id": "serve_return_context_breakdown", "label": "Serviço e resposta",
+                    "family": "serve_return", "unit": "serve_return_context_series", "sample_size": 2,
+                    "value": [{
+                        "context": "indoor", "label": "Carreira · Indoor", "matches": 2,
+                        "service_points_won_pct": 64.2, "first_serve_points_won_pct": 72.1,
+                        "return_points_won_pct": 38.4, "hold_pct": 86.5, "break_pct": 24.0,
+                    }],
+                    "sample_assessment": {"label": "Amostra muito baixa"},
+                    "source": "test", "model_role": "DESCRIPTIVE_ONLY", "context": {},
                 }],
             }
 
@@ -141,6 +151,10 @@ class PlayerProfileCatalogTests(unittest.TestCase):
         self.assertIn(">#15<", detail)
         self.assertIn("Hard outdoor", detail)
         self.assertIn("<th>Indoor</th>", detail)
+        self.assertIn("Pontos de serviço ganhos", detail)
+        self.assertIn("Pontos de resposta ganhos", detail)
+        self.assertIn("Carreira · Indoor", detail)
+        self.assertIn("64.2%", detail)
         self.assertIn('class="bar"', detail)
 
 
