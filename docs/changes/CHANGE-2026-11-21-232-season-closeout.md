@@ -1,7 +1,7 @@
 # CHANGE-2026-11-21-232 — Fecho metodológico da temporada
 
 **Nível:** 3 — pricing/metodologia central  
-**Estado:** em implementação e validação  
+**Estado:** implementado e validado; pronto para revisão
 **Modo:** SHADOW_ONLY
 
 ## Objetivo
@@ -66,3 +66,67 @@ contexto informativo, sem peso separado na fair odd. Esta decisão evita ajustar
 o modelo retrospetivamente ao caso Zverev–Alcaraz.
 
 Resultado estruturado: `data/validation/contextual-h2h-surface-context-audit-2026-11-21.json`.
+
+## Fecho factual do ledger de 2026
+
+Foram registados os três resultados finais confirmados manualmente pelo
+utilizador, sem inventar vencedores nem incluir jogos não disputados nas
+métricas primárias:
+
+- Fritz–Rune: `WALKOVER`, resolvido mas excluído da avaliação primária;
+- Muchova–Andreeva: `CANCELLED`, resolvido sem vencedor e excluído;
+- Zverev–Alcaraz: vitória de Alcaraz por `6-2 7-6`, elegível para avaliação.
+
+O settlement distingue agora `ready_resolved` de `ready_settled`: um cancelado
+fecha a pendência do ledger, mas não entra em accuracy, Brier ou log loss.
+
+## Auditoria adicional das fichas e da força estrutural
+
+O replay cronológico reutilizou a mesma recolha local para evitar chamadas
+externas e testou apenas componentes já disponíveis nas fichas dos jogadores.
+
+- qualidade dos adversários recentes: mantida;
+- nível dos torneios recentes: mantido;
+- ranking representativo: mantido;
+- granularidade adicional por ronda: rejeitada por ganho inconclusivo;
+- prior especial top-2/top-3/top-5: rejeitado por ganho inconclusivo e risco de
+  sobrestimar o favorito de elite;
+- trajetória bruta do ranking ATP: removida da família estrutural, pois
+  duplicava informação já representada pelo nível atual, ranking
+  representativo, pontos e contexto de regresso.
+
+### Promoção ATP suportada
+
+Perfil promovido: `contextual_v8_atp_no_raw_trajectory`.
+
+- holdout cronológico: 5.279 jogos;
+- log loss anterior: `0,618301`;
+- log loss candidato: `0,618131`;
+- ganho: `0,000170`;
+- IC95% do ganho: `[0,000024; 0,000315]`;
+- estado: **SUPPORTED**;
+- mercado usado na previsão: **não**.
+
+A melhoria é pequena, mas sustentada fora da amostra. Não foi aplicado qualquer
+bónus manual a favoritos ou jogadores de elite.
+
+## Fair odd e incerteza
+
+A probabilidade e os intervalos ATP foram recalibrados depois da promoção. O
+release passa para `runtime_generation: 23`. O contrato WTA — combinação,
+coeficientes e incerteza — é preservado exatamente, porque esta alteração foi
+validada apenas para ATP.
+
+O workflow guarda o contrato WTA anterior antes de reconstruir o baseline,
+impedindo uma recalibração WTA silenciosa durante uma promoção exclusivamente
+ATP.
+
+## Verificação final
+
+- 73 testes dirigidos aprovados;
+- 67 testes Google Apps Script aprovados;
+- 1.105 testes Python verificados: 1.102 passaram na suite conjunta e os três
+  bloqueados pelo isolamento Windows passaram individualmente fora da sandbox;
+- lint, scanner de segredos e `git diff --check` aprovados;
+- fair odd continua independente do mercado;
+- nenhuma entrada PAPER/REAL ou GREEN foi criada por esta alteração.

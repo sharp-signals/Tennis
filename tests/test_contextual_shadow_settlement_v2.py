@@ -138,6 +138,35 @@ class ContextualShadowSettlementTests(unittest.TestCase):
                 settlement.append_outcomes([conflict], path)
             self.assertEqual(len(settlement.read_jsonl(path)), 1)
 
+    def test_cancelled_outcome_closes_ledger_without_fabricating_winner(self):
+        row = observation()
+        cancelled = {
+            "schema_version": 1,
+            "outcome_id": "cancelled-outcome",
+            "observation_id": row["observation_id"],
+            "canonical_match_instance_id": row["canonical_match_instance_id"],
+            "configuration_fingerprint": row["contextual_shadow"][
+                "configuration_fingerprint"
+            ],
+            "winner_side": None,
+            "winner_id": None,
+            "result": "CANCELLED",
+            "contest_status": "CANCELLED",
+            "primary_evaluation_eligible": False,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "outcomes.jsonl"
+            self.assertEqual(settlement.append_outcomes([cancelled], path), 1)
+            self.assertEqual(settlement.append_outcomes([cancelled], path), 0)
+            self.assertIsNone(settlement.read_jsonl(path)[0]["winner_side"])
+        result = settlement.build_evaluation([row], [cancelled])
+        self.assertEqual(result["counts"]["ready_pending"], 0)
+        self.assertEqual(result["counts"]["ready_resolved"], 1)
+        self.assertEqual(result["counts"]["ready_settled"], 0)
+        self.assertEqual(
+            result["counts"]["settled_excluded_by_reason"], {"CANCELLED": 1},
+        )
+
     def test_evaluation_uses_only_ready_cohort_and_known_metrics(self):
         rows = [
             observation("a", probability=0.8),

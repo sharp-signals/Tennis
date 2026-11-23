@@ -213,6 +213,18 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v8_atp_no_raw_trajectory": {
+        "structural_strength": (
+            "contextual_structural_material_rank_core_v6",
+            "contextual_structural_representative_rank_core_v6",
+            "contextual_structural_points_log_ratio_v6",
+            "contextual_structural_return_rank_contraction_v7",
+            "contextual_structural_return_points_contraction_v7",
+            "contextual_structural_return_friction_margin_v7",
+            "contextual_structural_inactivity_margin_v3",
+        ),
+        "surface_conditions": ("contextual_surface_signal_v1",),
+    },
     "contextual_v7_global_elo_atp_ab_v1": {
         "structural_strength": (
             "contextual_structural_material_rank_core_v6",
@@ -450,7 +462,9 @@ def _family_features(family: str, feature_profile: str = "legacy_v0") -> tuple[s
 def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | None:
     if feature_profile not in {
         "contextual_v1", "contextual_v2", "contextual_v3", "contextual_v4",
-        "contextual_v5", "contextual_v6", "contextual_v7", "recent_v0", "recent_v1", "recent_v2", "recent_v3",
+        "contextual_v5", "contextual_v6", "contextual_v7",
+        "contextual_v8_atp_no_raw_trajectory",
+        "recent_v0", "recent_v1", "recent_v2", "recent_v3",
         "contextual_v7_global_elo_atp_ab_v1",
         "contextual_v7_global_elo_wta_ab_v1",
         "contextual_v7_global_surface_elo_wta_ab_v1",

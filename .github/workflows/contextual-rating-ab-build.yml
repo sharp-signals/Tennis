@@ -12,6 +12,8 @@ on:
       - "scripts/build_contextual_family_combination_v17.py"
       - "scripts/calibrate_contextual_uncertainty_v17.py"
       - "scripts/build_contextual_family_combination_v18.py"
+      - "scripts/audit_contextual_existing_feature_ablation.py"
+      - "scripts/promote_contextual_atp_structural_v8.py"
       - "scripts/calibrate_contextual_uncertainty_v18.py"
       - "scripts/run_contextual_shadow_v2.py"
       - "src/contextual_chronological_rating.py"
@@ -22,6 +24,7 @@ on:
       - "src/contextual_family_combination_v18.py"
       - "src/contextual_probability_uncertainty_v18.py"
       - "src/contextual_family_hierarchy.py"
+      - "src/contextual_family_calibration.py"
       - "src/contextual_family_replay.py"
       - "src/contextual_rating_ab_v1.py"
       - "src/contextual_surface_ledger.py"
@@ -71,13 +74,24 @@ jobs:
             --output .tmp/contextual-primary-conflict-v15.json
       - name: Construir combinação e incerteza v18
         run: |
+          mkdir -p .tmp/v18
+          cp data/models/contextual-family-combination-v18.json \
+            .tmp/v18/contextual-family-combination-v18-frozen-wta.json
+          cp data/models/contextual-probability-uncertainty-v18.json \
+            .tmp/v18/contextual-probability-uncertainty-v18-frozen-wta.json
           python -m scripts.build_contextual_family_combination_v18 \
             --replay-input-dir .tmp/contextual-rating-replay \
             --baseline-contract data/models/contextual-family-combination-v17.json \
+            --output .tmp/v18/contextual-family-combination-v18-baseline.json
+          python -m scripts.promote_contextual_atp_structural_v8 \
+            --replay-dir .tmp/contextual-rating-replay \
+            --baseline .tmp/v18/contextual-family-combination-v18-baseline.json \
+            --frozen-wta-contract .tmp/v18/contextual-family-combination-v18-frozen-wta.json \
             --output .tmp/v18/contextual-family-combination-v18.json
           python -m scripts.calibrate_contextual_uncertainty_v18 \
             --replay-input-dir .tmp/contextual-rating-replay \
             --combination-contract .tmp/v18/contextual-family-combination-v18.json \
+            --frozen-wta-contract .tmp/v18/contextual-probability-uncertainty-v18-frozen-wta.json \
             --output .tmp/v18/contextual-probability-uncertainty-v18.json
           cp .tmp/v18/contextual-family-combination-v18.json data/models/
           cp .tmp/v18/contextual-probability-uncertainty-v18.json data/models/
@@ -110,13 +124,20 @@ jobs:
             scripts/build_contextual_family_combination_v17.py \
             scripts/calibrate_contextual_uncertainty_v17.py \
             scripts/build_contextual_family_combination_v18.py \
+            scripts/audit_contextual_existing_feature_ablation.py \
+            scripts/promote_contextual_atp_structural_v8.py \
             scripts/calibrate_contextual_uncertainty_v18.py \
             scripts/build_contextual_rating_ab_v1.py \
             scripts/audit_contextual_tier_win_credit_v1.py \
             scripts/run_contextual_shadow_v2.py \
             scripts/run_fenzobot_contextual_2026_11.py \
             tests/test_contextual_chronological_rating.py \
-            tests/test_contextual_rating_ab_v1.py
+            tests/test_contextual_rating_ab_v1.py \
+            tests/test_contextual_existing_feature_ablation.py \
+            tests/test_promote_contextual_atp_structural_v8.py
+          python -m pytest -q \
+            tests/test_contextual_existing_feature_ablation.py \
+            tests/test_promote_contextual_atp_structural_v8.py
           python -m pytest -q \
             tests/test_audit_contextual_primary_conflict_v15.py \
             tests/test_contextual_family_combination_v16.py \
@@ -162,7 +183,7 @@ jobs:
       - name: Guardar release global versionado
         uses: actions/upload-artifact@v7
         with:
-          name: fenzobot-contextual-release-v22
+          name: fenzobot-contextual-release-v23
           path: |
             data/models/fenzobot-contextual-2026-11.json
             data/models/fenzobot-contextual-2026-11-manifest.json

@@ -15,7 +15,7 @@ from src.contextual_family_replay import (
 
 GLOBAL_RELEASE_ID = "FENZOBOT_CONTEXTUAL_2026_11"
 RELEASE_SLUG = "fenzobot-contextual-2026-11"
-RUNTIME_GENERATION = 22
+RUNTIME_GENERATION = 23
 COMBINATION_VERSION = "contextual-family-combination-v18-unanimous-consensus"
 CALIBRATION_VERSION = "contextual-probability-uncertainty-v18"
 ACCEPTED_HISTORICAL_RELEASES = [
@@ -131,6 +131,12 @@ ACCEPTED_HISTORICAL_RELEASES = [
         "runtime_generation": 21,
         "configuration_fingerprint": (
             "8a4bd8c5b7659e6d42f0df8958d05768b57b520951d27c1dfe72d36740bfc43b"
+        ),
+    },
+    {
+        "runtime_generation": 22,
+        "configuration_fingerprint": (
+            "60a065a30f1b09627889e5f09639299cc8bee8050505bb2c6e1da8a8eeec67b6"
         ),
     },
 ]
