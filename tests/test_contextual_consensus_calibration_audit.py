@@ -2,6 +2,7 @@ import unittest
 
 from scripts.audit_contextual_consensus_calibration import (
     _audit_records,
+    _cross_grouped,
     _fair_band,
     _segment,
 )
@@ -34,6 +35,10 @@ class ContextualConsensusCalibrationAuditTests(unittest.TestCase):
         self.assertEqual(records[0]["consensus"], "5/5")
         self.assertTrue(records[0]["primary_aligned"])
         self.assertTrue(records[0]["favorite_won"])
+        self.assertEqual(
+            records[0]["primary_alignment_label"], "both_primary_aligned",
+        )
+        self.assertEqual(records[0]["consensus_label"], "unanimous_5_of_5")
 
     def test_segment_reports_calibration_gap_without_refitting(self):
         result = _segment([
@@ -44,6 +49,24 @@ class ContextualConsensusCalibrationAuditTests(unittest.TestCase):
         self.assertEqual(result["predicted_pct"], 75.0)
         self.assertEqual(result["observed_pct"], 50.0)
         self.assertEqual(result["gap_pp"], -25.0)
+
+    def test_cross_grouping_keeps_probability_and_context_segments_separate(self):
+        result = _cross_grouped([
+            {
+                "probability_band": "60-70%",
+                "surface_context": "hard_indoor",
+                "favorite_probability": 0.65,
+                "favorite_won": True,
+            },
+            {
+                "probability_band": "60-70%",
+                "surface_context": "clay",
+                "favorite_probability": 0.65,
+                "favorite_won": False,
+            },
+        ], "probability_band", "surface_context")
+        self.assertEqual(result["60-70% | hard_indoor"]["observed_pct"], 100.0)
+        self.assertEqual(result["60-70% | clay"]["observed_pct"], 0.0)
 
 
 if __name__ == "__main__":

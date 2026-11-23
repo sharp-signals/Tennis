@@ -166,6 +166,17 @@ def confirmed_outcome(
     }
 
 
+def _is_resolved_without_winner(row: Mapping[str, Any]) -> bool:
+    return (
+        row.get("primary_evaluation_eligible") is False
+        and str(row.get("contest_status") or "") in {
+            "CANCELLED", "NOT_PLAYED", "VOID",
+        }
+        and row.get("winner_side") is None
+        and row.get("winner_id") is None
+    )
+
+
 def append_outcomes(
     rows: Iterable[Mapping[str, Any]], path: Path = OUTCOMES_PATH,
 ) -> int:
@@ -180,7 +191,8 @@ def append_outcomes(
         row = dict(original)
         key = str(row.get("observation_id") or "")
         side = row.get("winner_side")
-        if not key or side not in {"a", "b"}:
+        ineligible_without_winner = _is_resolved_without_winner(row)
+        if not key or (side not in {"a", "b"} and not ineligible_without_winner):
             raise ValueError("invalid contextual SHADOW outcome")
         previous = existing.get(key)
         if previous is not None:
@@ -517,7 +529,10 @@ def build_evaluation(
             code = "ORPHAN_OR_MISSING_OBSERVATION_ID"
         elif key in outcome_by_observation:
             code = "DUPLICATE_OUTCOME"
-        elif row.get("winner_side") not in {"a", "b"}:
+        elif (
+            row.get("winner_side") not in {"a", "b"}
+            and not _is_resolved_without_winner(row)
+        ):
             code = "INVALID_WINNER_SIDE"
         elif row.get("model_version") not in {None, model_version}:
             code = "MODEL_VERSION_MISMATCH"
@@ -642,6 +657,12 @@ def build_evaluation(
         == "READY_FOR_PROSPECTIVE_SHADOW"
         for row in observations
     )
+    ready_resolved = sum(
+        (row.get("contextual_shadow") or {}).get("status")
+        == "READY_FOR_PROSPECTIVE_SHADOW"
+        and str(row.get("observation_id") or "") in outcome_by_observation
+        for row in observations
+    )
     overall = _metric_block([pair for _, pair in pairs])
     by_tour = grouped(lambda row: row.get("tour"))
     market_rows = []
@@ -687,7 +708,8 @@ def build_evaluation(
             "ready_observations": ready_total,
             "outcomes": len(outcome_by_observation),
             "ready_settled": len(pairs),
-            "ready_pending": max(0, ready_total - len(pairs)),
+            "ready_resolved": ready_resolved,
+            "ready_pending": max(0, ready_total - ready_resolved),
             "settled_excluded_from_primary_metrics": excluded_settled,
             "settled_excluded_by_reason": dict(sorted(excluded_by_reason.items())),
             "market_observations": len(market_by_observation),
