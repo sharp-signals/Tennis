@@ -55,6 +55,25 @@ class GeneratePlayerProfileV2Tests(unittest.TestCase):
 
         self.assertEqual([row["name"] for row in index["players"]], ["Alfa", "Beta", "Zeta"])
 
+    def test_rebuild_index_can_exclude_stale_profile_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            current = root / "atp" / "current.json"
+            stale = root / "atp" / "stale.json"
+            current.parent.mkdir(parents=True)
+            for path, name in ((current, "Current"), (stale, "Stale")):
+                path.write_text(json.dumps({
+                    "generated_at_utc": "2026-11-23T12:00:00+00:00",
+                    "player": {"name": name, "tour": "atp"},
+                    "overall_sample": {"matches": 20, "status": "LIMITED"},
+                    "alerts": [], "metrics": [],
+                }), encoding="utf-8")
+
+            generate_profile_v2.rebuild_index(root, [current])
+            index = json.loads((root / "index.json").read_text(encoding="utf-8"))
+
+        self.assertEqual([row["name"] for row in index["players"]], ["Current"])
+
 
 if __name__ == "__main__":
     unittest.main()
