@@ -10,9 +10,10 @@ from src import generate_profile, player_profile
 
 class PlayerProfileFormattingTests(unittest.TestCase):
     def test_reliability_boundaries_and_percentage(self):
-        self.assertIn("muito pequena", player_profile._reliability_label(9))
-        self.assertEqual(player_profile._reliability_label(10), "amostra pequena")
-        self.assertEqual(player_profile._reliability_label(30), "amostra razoável")
+        self.assertIn("muito baixa", player_profile._reliability_label(19))
+        self.assertIn("limitada", player_profile._reliability_label(20))
+        self.assertIn("limitada", player_profile._reliability_label(49))
+        self.assertEqual(player_profile._reliability_label(50), "amostra razoável")
         self.assertEqual(player_profile._reliability_label(100), "amostra sólida")
         self.assertEqual(player_profile._pct(0, 0), "n/d")
         self.assertEqual(player_profile._pct(3, 4), "75.0%")

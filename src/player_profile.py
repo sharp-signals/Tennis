@@ -31,10 +31,10 @@ from . import fetch_data
 def _reliability_label(sample_size: int) -> str:
     """Rótulo de fiabilidade baseado SÓ no tamanho da amostra — a coisa
     mais honesta que podemos dizer sem um modelo estatístico a sério."""
-    if sample_size < 10:
-        return "⚠️ amostra muito pequena"
-    if sample_size < 30:
-        return "amostra pequena"
+    if sample_size < 20:
+        return "⚠️ amostra muito baixa"
+    if sample_size < 50:
+        return "⚠️ amostra limitada"
     if sample_size < 100:
         return "amostra razoável"
     return "amostra sólida"
