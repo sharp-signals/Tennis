@@ -99,6 +99,19 @@ class PlayerProfileCatalogTests(unittest.TestCase):
                     "unit": "ranking_series", "sample_size": 2,
                     "sample_assessment": {"label": "Amostra muito baixa"},
                     "source": "test", "model_role": "DESCRIPTIVE_ONLY", "context": {},
+                }, {
+                    "metric_id": "season_surface_evolution", "label": "Superfícies", "family": "surface_conditions",
+                    "value": [{
+                        "year": 2026,
+                        "overall": {"win_rate": 0.5, "matches": 2},
+                        "hard_outdoor": {"win_rate": 1.0, "matches": 1},
+                        "indoor": {"win_rate": 0.0, "matches": 1},
+                        "clay": {"win_rate": None, "matches": 0},
+                        "grass": {"win_rate": None, "matches": 0},
+                    }],
+                    "unit": "season_surface_series", "sample_size": 2,
+                    "sample_assessment": {"label": "Amostra muito baixa"},
+                    "source": "test", "model_role": "DESCRIPTIVE_ONLY", "context": {},
                 }],
             }
 
@@ -124,6 +137,10 @@ class PlayerProfileCatalogTests(unittest.TestCase):
         self.assertIn("Amostra inferior a 20 jogos", detail)
         self.assertIn("Forma recente", detail)
         self.assertIn("Evolução do ranking típico", detail)
+        self.assertIn(">#30<", detail)
+        self.assertIn(">#15<", detail)
+        self.assertIn("Hard outdoor", detail)
+        self.assertIn("<th>Indoor</th>", detail)
         self.assertIn('class="bar"', detail)
 
 

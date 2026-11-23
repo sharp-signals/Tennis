@@ -120,8 +120,33 @@ class PlayerProfileV2BuilderTests(unittest.TestCase):
         self.assertEqual(by_id["recent_90d_costly_losses"]["context"]["count"], 1)
         season = by_id["season_surface_evolution"]["value"]
         self.assertEqual(season[0]["overall"]["matches"], 2)
-        self.assertEqual(season[0]["hard"]["wins"], 1)
+        self.assertEqual(season[0]["hard_outdoor"]["wins"], 1)
+        self.assertEqual(season[0]["indoor"]["matches"], 0)
         self.assertEqual(season[0]["grass"]["sample_assessment"]["status"], "NOT_APPLICABLE")
+
+    def test_season_surface_evolution_separates_indoor_from_hard_outdoor(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Player B",
+                "tourney_date": 20260110, "surface": "Hard", "indoor": False,
+            },
+            {
+                "winner_name": "Player C", "loser_name": "Player A",
+                "tourney_date": 20260210, "surface": "Hard", "indoor": True,
+            },
+        ])
+        metrics = []
+
+        player_profile_v2._append_season_surface_metrics(
+            metrics, history, "Player A",
+            pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime(),
+        )
+
+        point = metrics[0]["value"][0]
+        self.assertEqual(point["hard_outdoor"]["matches"], 1)
+        self.assertEqual(point["hard_outdoor"]["wins"], 1)
+        self.assertEqual(point["indoor"]["matches"], 1)
+        self.assertEqual(point["indoor"]["wins"], 0)
 
     def test_historical_odds_metrics_keep_band_samples_and_are_descriptive(self):
         odds = pd.DataFrame([
