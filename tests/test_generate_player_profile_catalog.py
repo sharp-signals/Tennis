@@ -14,6 +14,8 @@ class PlayerProfileCatalogTests(unittest.TestCase):
     def test_generated_catalog_paths_are_allowed_for_bot_publication(self):
         self.assertTrue(is_allowed("data/player_profiles/v2/index.json", "bot"))
         self.assertTrue(is_allowed("docs/jogadores/index.html", "bot"))
+        self.assertTrue(is_allowed("data/player_profiles/v2/index.json", "player-profiles"))
+        self.assertTrue(is_allowed("docs/jogadores/index.html", "player-profiles"))
 
     def test_active_players_exclude_future_and_old_rows(self):
         history = pd.DataFrame([
@@ -28,6 +30,26 @@ class PlayerProfileCatalogTests(unittest.TestCase):
         )
         self.assertEqual(players, ["Active A", "Active B"])
 
+    def test_player_row_index_preserves_audited_name_aliases(self):
+        history = pd.DataFrame([
+            {"winner_name": "Taylor Harry Fritz", "loser_name": "Opponent"},
+            {"winner_name": "Other", "loser_name": "Taylor Fritz"},
+        ])
+        index = catalog._player_row_index(history)
+        rows = catalog._rows_for_player(history, index, "Taylor Fritz")
+        self.assertEqual(len(rows), 2)
+
+    def test_active_player_selection_collapses_audited_aliases(self):
+        history = pd.DataFrame([
+            {"winner_name": "Taylor Harry Fritz", "loser_name": "Opponent", "tourney_date": 20261101},
+            {"winner_name": "Other", "loser_name": "Taylor Fritz", "tourney_date": 20261102},
+        ])
+        players = catalog.select_active_players(
+            history,
+            cutoff=pd.Timestamp("2026-11-23T12:00:00Z").to_pydatetime(),
+        )
+        self.assertEqual(players.count("Taylor Fritz"), 1)
+
     def test_batch_reuses_history_and_builds_searchable_html(self):
         history = pd.DataFrame([
             {
@@ -36,7 +58,10 @@ class PlayerProfileCatalogTests(unittest.TestCase):
             },
         ])
 
+        received_history_sizes = []
+
         def profile(_history, player, tour, **kwargs):
+            received_history_sizes.append(len(_history))
             return {
                 "schema_version": 2,
                 "generated_at_utc": kwargs["generated_at_utc"],
@@ -75,6 +100,7 @@ class PlayerProfileCatalogTests(unittest.TestCase):
 
         self.assertEqual(summary["generated"]["atp"], 2)
         self.assertEqual(get_history.call_count, 1)
+        self.assertEqual(received_history_sizes, [1, 1])
         self.assertEqual(len(payload["players"]), 2)
         self.assertIn('id="search"', index)
         self.assertIn("Amostra inferior a 20 jogos", detail)

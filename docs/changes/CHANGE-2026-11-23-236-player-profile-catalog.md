@@ -21,3 +21,5 @@ jogador nem repetir leituras do histórico.
 - o histórico de odds é lido em modo cache-only;
 - a execução é manual através de
   `python -m src.generate_player_profile_catalog`.
+- o workflow manual `Build Player Profile Catalog` permite gerar e publicar o
+  catálogo no GitHub sem reativar os runs automáticos do Fenzobot.
