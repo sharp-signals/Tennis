@@ -127,6 +127,9 @@ class PlayerProfileV2BuilderTests(unittest.TestCase):
         self.assertEqual(by_id["moneyline_odds_band_1_31_1_40"]["sample_size"], 1)
         self.assertEqual(by_id["moneyline_observed_1_20_to_2_00"]["value"], 1.0)
         self.assertEqual(by_id["moneyline_observed_above_2_00"]["value"], 0.0)
+        formats = by_id["moneyline_odds_band_1_31_1_40"]["context"]["by_format"]
+        self.assertNotIn("margins", formats["bo3"])
+        self.assertEqual(formats["bo3"]["n"], 1)
         self.assertTrue(all(metric["model_role"] == "DESCRIPTIVE_ONLY" for metric in metrics))
 
 

@@ -49,12 +49,54 @@ def select_active_players(
     lower = pd.Timestamp(cutoff) - pd.Timedelta(days=active_days)
     eligible = history[dates.notna() & (dates < pd.Timestamp(cutoff)) & (dates >= lower)]
     counts: Counter[str] = Counter()
+    representatives: dict[str, str] = {}
     for column in ("winner_name", "loser_name"):
         for raw in eligible.get(column, pd.Series(dtype=object)).dropna():
             name = str(raw).strip()
             if name:
-                counts[name] += 1
-    return [name for name, _ in sorted(counts.items(), key=lambda item: (-item[1], item[0].casefold()))]
+                identity = min(_identity_keys(name), key=lambda value: (len(value), value))
+                counts[identity] += 1
+                current = representatives.get(identity)
+                if current is None or len(name) < len(current):
+                    representatives[identity] = name
+    ordered = sorted(counts, key=lambda key: (-counts[key], representatives[key].casefold()))
+    return [representatives[key] for key in ordered]
+
+
+def _identity_keys(player: str) -> set[str]:
+    normalized = fetch_data._normalize_name(player)
+    keys = {normalized}
+    for canonical, variants in fetch_data._HISTORICAL_EXACT_NAME_ALIASES.items():
+        family = {
+            fetch_data._normalize_name(canonical),
+            *(fetch_data._normalize_name(value) for value in variants),
+        }
+        if normalized in family:
+            keys.update(family)
+    return keys
+
+
+def _player_row_index(history: pd.DataFrame) -> dict[str, set[object]]:
+    index: dict[str, set[object]] = {}
+    for column in ("winner_name", "loser_name"):
+        if column not in history.columns:
+            continue
+        for row_index, raw in history[column].dropna().items():
+            key = fetch_data._normalize_name(str(raw))
+            if key:
+                index.setdefault(key, set()).add(row_index)
+    return index
+
+
+def _rows_for_player(
+    history: pd.DataFrame, row_index: dict[str, set[object]], player: str,
+) -> pd.DataFrame:
+    selected: set[object] = set()
+    for key in _identity_keys(player):
+        selected.update(row_index.get(key, set()))
+    if not selected:
+        return history.iloc[0:0].copy()
+    return history.loc[history.index.isin(selected)].copy()
 
 
 def generate_catalog(
@@ -80,17 +122,21 @@ def generate_catalog(
         odds_history = fetch_data.get_historical_odds_history(
             normalized, refresh_current=False,
         )
+        history_index = _player_row_index(history)
+        odds_index = _player_row_index(odds_history)
         players = select_active_players(history, cutoff=cutoff, active_days=active_days)
         if max_players is not None and max_players > 0:
             players = players[:max_players]
         counts[normalized] = 0
         skipped[normalized] = 0
         for player in players:
+            player_history = _rows_for_player(history, history_index, player)
+            player_odds_history = _rows_for_player(odds_history, odds_index, player)
             profile = build_player_profile_v2_record(
-                history,
+                player_history,
                 player,
                 normalized,
-                odds_history=odds_history,
+                odds_history=player_odds_history,
                 generated_at_utc=generated_at,
             )
             if profile is None:

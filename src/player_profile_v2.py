@@ -362,7 +362,7 @@ def _append_odds_metrics(
                 "losses": max(0, n - wins),
                 "odds_band": band,
                 "mean_game_diff": cell.get("mean_game_diff"),
-                "by_format": cell.get("by_format") or {},
+                "by_format": _compact_odds_formats(cell.get("by_format") or {}),
                 "odds_basis": basis,
             },
         ))
@@ -409,10 +409,23 @@ def _append_odds_metrics(
                 "losses": underdog_n - underdog_wins,
                 "definition": "odd observada do jogador > 2.00",
                 "mean_game_diff": underdog.get("mean_game_diff"),
-                "by_format": underdog.get("by_format") or {},
+                "by_format": _compact_odds_formats(underdog.get("by_format") or {}),
                 "odds_basis": basis,
             },
         ))
+
+
+def _compact_odds_formats(formats: dict) -> dict:
+    return {
+        key: {
+            "n": int(value.get("n") or 0),
+            "wins": int(value.get("wins") or 0),
+            "win_rate_pct": value.get("win_rate_pct"),
+            "mean_game_diff": value.get("mean_game_diff"),
+            "cover_ge": value.get("cover_ge") or {},
+        }
+        for key, value in formats.items()
+    }
 
 def build_player_profile_v2_record(
     history: pd.DataFrame,

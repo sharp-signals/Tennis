@@ -63,6 +63,9 @@ PROFILES: dict[str, tuple[str, ...]] = {
     "images": COMMON + (
         "docs/assets/players/", "data/player_images.json", "data/player_images_review.json",
     ),
+    "player-profiles": COMMON + (
+        "data/player_profiles/", "docs/jogadores/",
+    ),
 }
 
 
