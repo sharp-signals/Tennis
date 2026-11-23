@@ -1,0 +1,2118 @@
+{
+  "alerts": [],
+  "generated_at_utc": "2026-11-23T22:48:12.577246+00:00",
+  "metrics": [
+    {
+      "context": {
+        "as_of": "2026-07-21 00:00:00",
+        "points": 515
+      },
+      "family": "structural_strength",
+      "label": "Ranking atual observado",
+      "metric_id": "current_rank",
+      "model_role": "MODEL_ACTIVE",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "canonical_history_latest_rank",
+      "unit": "rank",
+      "value": 124
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Pontos atuais",
+      "metric_id": "current_points",
+      "model_role": "MODEL_ACTIVE",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "contextual_ranking_v1",
+      "unit": "points",
+      "value": 515.0
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Ranking típico nos últimos 365 dias",
+      "metric_id": "representative_rank_365d",
+      "model_role": "MODEL_ACTIVE",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "contextual_ranking_v1",
+      "unit": "rank",
+      "value": 110.995495
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Ranking típico nos últimos 730 dias",
+      "metric_id": "representative_rank_730d",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "contextual_ranking_v1",
+      "unit": "rank",
+      "value": 131.453414
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Melhor ranking observado",
+      "metric_id": "observed_peak_rank",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "contextual_ranking_v1",
+      "unit": "rank",
+      "value": 37.0
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Persistência no patamar atual",
+      "metric_id": "rank_band_persistence_365d",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "contextual_ranking_v1",
+      "unit": "rate",
+      "value": 0.625
+    },
+    {
+      "context": {
+        "evidence_status": "COMPLETE_CURRENT_AND_HISTORY",
+        "return_phase": "ESTABLISHED_RETURN"
+      },
+      "family": "structural_strength",
+      "label": "Jogos desde o regresso",
+      "metric_id": "matches_since_return",
+      "model_role": "MODEL_ACTIVE",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 25,
+      "source": "contextual_ranking_v1",
+      "unit": "matches",
+      "value": 25.0
+    },
+    {
+      "context": {
+        "losses": 4,
+        "window": 5,
+        "wins": 1
+      },
+      "family": "recent_form",
+      "label": "Resultados nos últimos 5 jogos",
+      "metric_id": "recent_form_last_5",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 5,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.2
+    },
+    {
+      "context": {
+        "losses": 7,
+        "window": 10,
+        "wins": 3
+      },
+      "family": "recent_form",
+      "label": "Resultados nos últimos 10 jogos",
+      "metric_id": "recent_form_last_10",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 10,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.3
+    },
+    {
+      "context": {
+        "losses": 16,
+        "window": 20,
+        "wins": 4
+      },
+      "family": "recent_form",
+      "label": "Resultados nos últimos 20 jogos",
+      "metric_id": "recent_form_last_20",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 20,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.2
+    },
+    {
+      "context": {
+        "losses": 26,
+        "surface": "hard",
+        "wins": 16
+      },
+      "family": "surface_conditions",
+      "label": "Carreira em Hard",
+      "metric_id": "surface_hard_career",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 42,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.380952
+    },
+    {
+      "context": {
+        "losses": 37,
+        "surface": "clay",
+        "wins": 27
+      },
+      "family": "surface_conditions",
+      "label": "Carreira em Clay",
+      "metric_id": "surface_clay_career",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra razoável",
+        "status": "REASONABLE"
+      },
+      "sample_size": 64,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.421875
+    },
+    {
+      "context": {
+        "losses": 11,
+        "surface": "grass",
+        "wins": 10
+      },
+      "family": "surface_conditions",
+      "label": "Carreira em Grass",
+      "metric_id": "surface_grass_career",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 21,
+      "source": "canonical_history",
+      "unit": "win_rate",
+      "value": 0.47619
+    },
+    {
+      "context": {},
+      "family": "structural_strength",
+      "label": "Evolução anual do ranking",
+      "metric_id": "ranking_by_year",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "canonical_history_match_ranks",
+      "unit": "ranking_series",
+      "value": [
+        {
+          "best_rank": 137.0,
+          "end_rank": 137.0,
+          "observations": 8,
+          "start_rank": 217.0,
+          "typical_rank": 157.0,
+          "year": 2017
+        },
+        {
+          "best_rank": 141.0,
+          "end_rank": 157.0,
+          "observations": 4,
+          "start_rank": 143.0,
+          "typical_rank": 143.0,
+          "year": 2018
+        },
+        {
+          "best_rank": 161.0,
+          "end_rank": 161.0,
+          "observations": 3,
+          "start_rank": 167.0,
+          "typical_rank": 167.0,
+          "year": 2019
+        },
+        {
+          "best_rank": 159.0,
+          "end_rank": 159.0,
+          "observations": 2,
+          "start_rank": 159.0,
+          "typical_rank": 159.0,
+          "year": 2020
+        },
+        {
+          "best_rank": 165.0,
+          "end_rank": 165.0,
+          "observations": 5,
+          "start_rank": 171.0,
+          "typical_rank": 167.0,
+          "year": 2021
+        },
+        {
+          "best_rank": 218.0,
+          "end_rank": 235.0,
+          "observations": 3,
+          "start_rank": 218.0,
+          "typical_rank": 235.0,
+          "year": 2022
+        },
+        {
+          "best_rank": 44.0,
+          "end_rank": 44.0,
+          "observations": 27,
+          "start_rank": 122.0,
+          "typical_rank": 58.0,
+          "year": 2023
+        },
+        {
+          "best_rank": 37.0,
+          "end_rank": 58.0,
+          "observations": 41,
+          "start_rank": 43.0,
+          "typical_rank": 45.0,
+          "year": 2024
+        },
+        {
+          "best_rank": 108.0,
+          "end_rank": 140.0,
+          "observations": 23,
+          "start_rank": 153.0,
+          "typical_rank": 141.0,
+          "year": 2025
+        },
+        {
+          "best_rank": 82.0,
+          "end_rank": 124.0,
+          "observations": 11,
+          "start_rank": 135.0,
+          "typical_rank": 110.0,
+          "year": 2026
+        }
+      ]
+    },
+    {
+      "context": {
+        "bucket_type": "cumulative",
+        "losses": 2,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "Contra Top 3",
+      "metric_id": "opponent_level_top3",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 2,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.0
+    },
+    {
+      "context": {
+        "bucket_type": "cumulative",
+        "losses": 13,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "Contra Top 10",
+      "metric_id": "opponent_level_top10",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 13,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.0
+    },
+    {
+      "context": {
+        "bucket_type": "cumulative",
+        "losses": 21,
+        "wins": 4
+      },
+      "family": "recent_form",
+      "label": "Contra Top 20",
+      "metric_id": "opponent_level_top20",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 25,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.16
+    },
+    {
+      "context": {
+        "bucket_type": "cumulative",
+        "losses": 39,
+        "wins": 16
+      },
+      "family": "recent_form",
+      "label": "Contra Top 50",
+      "metric_id": "opponent_level_top50",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra razoável",
+        "status": "REASONABLE"
+      },
+      "sample_size": 55,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.290909
+    },
+    {
+      "context": {
+        "bucket_type": "cumulative",
+        "losses": 58,
+        "wins": 37
+      },
+      "family": "recent_form",
+      "label": "Contra Top 100",
+      "metric_id": "opponent_level_top100",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra razoável",
+        "status": "REASONABLE"
+      },
+      "sample_size": 95,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.389474
+    },
+    {
+      "context": {
+        "bucket_type": "exclusive",
+        "losses": 16,
+        "wins": 16
+      },
+      "family": "recent_form",
+      "label": "Contra ranking 100+",
+      "metric_id": "opponent_level_outside_top100",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 32,
+      "source": "canonical_history_opponent_rank_at_match",
+      "unit": "win_rate",
+      "value": 0.5
+    },
+    {
+      "context": {
+        "losses": 14,
+        "wins": 12
+      },
+      "family": "recent_form",
+      "label": "Grand Slam",
+      "metric_id": "tournament_level_grand_slam",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 26,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": 0.461538
+    },
+    {
+      "context": {
+        "losses": 13,
+        "wins": 8
+      },
+      "family": "recent_form",
+      "label": "Masters/WTA 1000",
+      "metric_id": "tournament_level_masters_1000",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 21,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": 0.380952
+    },
+    {
+      "context": {
+        "losses": 0,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "Finals",
+      "metric_id": "tournament_level_tour_finals",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": null
+    },
+    {
+      "context": {
+        "losses": 11,
+        "wins": 3
+      },
+      "family": "recent_form",
+      "label": "ATP/WTA 500",
+      "metric_id": "tournament_level_tour_500",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 14,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": 0.214286
+    },
+    {
+      "context": {
+        "losses": 31,
+        "wins": 28
+      },
+      "family": "recent_form",
+      "label": "ATP/WTA 250",
+      "metric_id": "tournament_level_tour_250",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra razoável",
+        "status": "REASONABLE"
+      },
+      "sample_size": 59,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": 0.474576
+    },
+    {
+      "context": {
+        "losses": 0,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "Circuito principal sem categoria detalhada",
+      "metric_id": "tournament_level_main_tour_unspecified",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": null
+    },
+    {
+      "context": {
+        "losses": 0,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "WTA 125",
+      "metric_id": "tournament_level_wta_125",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": null
+    },
+    {
+      "context": {
+        "losses": 0,
+        "wins": 0
+      },
+      "family": "recent_form",
+      "label": "Challenger",
+      "metric_id": "tournament_level_challenger",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_tournament_level",
+      "unit": "win_rate",
+      "value": null
+    },
+    {
+      "context": {
+        "losses": 60,
+        "wins": 41
+      },
+      "family": "recent_form",
+      "label": "Melhor de 3",
+      "metric_id": "format_bo3",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 101,
+      "source": "canonical_history_best_of",
+      "unit": "win_rate",
+      "value": 0.405941
+    },
+    {
+      "context": {
+        "losses": 14,
+        "wins": 12
+      },
+      "family": "recent_form",
+      "label": "Melhor de 5",
+      "metric_id": "format_bo5",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 26,
+      "source": "canonical_history_best_of",
+      "unit": "win_rate",
+      "value": 0.461538
+    },
+    {
+      "context": {
+        "losses": 6,
+        "wins": 6
+      },
+      "family": "surface_conditions",
+      "label": "Indoor",
+      "metric_id": "venue_indoor_career",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 12,
+      "source": "canonical_history_venue_context",
+      "unit": "win_rate",
+      "value": 0.5
+    },
+    {
+      "context": {
+        "losses": 68,
+        "wins": 47
+      },
+      "family": "surface_conditions",
+      "label": "Outdoor",
+      "metric_id": "venue_outdoor_career",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 115,
+      "source": "canonical_history_venue_context",
+      "unit": "win_rate",
+      "value": 0.408696
+    },
+    {
+      "context": {
+        "count": 0,
+        "event": "quality_win",
+        "examples": [],
+        "ranked_result_sample": 0,
+        "window_days": 90
+      },
+      "family": "recent_form",
+      "label": "Vitórias sobre adversários melhor classificados · 90 dias",
+      "metric_id": "recent_90d_quality_wins",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_match_ranks",
+      "unit": "rate_within_ranked_results",
+      "value": null
+    },
+    {
+      "context": {
+        "count": 0,
+        "event": "costly_loss",
+        "examples": [],
+        "ranked_result_sample": 0,
+        "window_days": 90
+      },
+      "family": "recent_form",
+      "label": "Derrotas com adversários pior classificados · 90 dias",
+      "metric_id": "recent_90d_costly_losses",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": false,
+        "label": "Não aplicável",
+        "status": "NOT_APPLICABLE"
+      },
+      "sample_size": 0,
+      "source": "canonical_history_match_ranks",
+      "unit": "rate_within_ranked_results",
+      "value": null
+    },
+    {
+      "context": {
+        "surfaces": [
+          "hard",
+          "clay",
+          "grass"
+        ]
+      },
+      "family": "surface_conditions",
+      "label": "Evolução por época e superfície",
+      "metric_id": "season_surface_evolution",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 127,
+      "source": "canonical_history",
+      "unit": "season_surface_series",
+      "value": [
+        {
+          "clay": {
+            "losses": 1,
+            "matches": 4,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.75,
+            "wins": 3
+          },
+          "grass": {
+            "losses": 1,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.666667,
+            "wins": 2
+          },
+          "hard": {
+            "losses": 1,
+            "matches": 1,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 3,
+            "matches": 8,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.625,
+            "wins": 5
+          },
+          "year": 2017
+        },
+        {
+          "clay": {
+            "losses": 2,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.333333,
+            "wins": 1
+          },
+          "grass": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "hard": {
+            "losses": 1,
+            "matches": 1,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 3,
+            "matches": 4,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.25,
+            "wins": 1
+          },
+          "year": 2018
+        },
+        {
+          "clay": {
+            "losses": 1,
+            "matches": 2,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 1
+          },
+          "grass": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "hard": {
+            "losses": 1,
+            "matches": 1,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 2,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.333333,
+            "wins": 1
+          },
+          "year": 2019
+        },
+        {
+          "clay": {
+            "losses": 1,
+            "matches": 2,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 1
+          },
+          "grass": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "hard": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 1,
+            "matches": 2,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 1
+          },
+          "year": 2020
+        },
+        {
+          "clay": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "grass": {
+            "losses": 2,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.333333,
+            "wins": 1
+          },
+          "hard": {
+            "losses": 1,
+            "matches": 2,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 1
+          },
+          "overall": {
+            "losses": 3,
+            "matches": 5,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.4,
+            "wins": 2
+          },
+          "year": 2021
+        },
+        {
+          "clay": {
+            "losses": 2,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.333333,
+            "wins": 1
+          },
+          "grass": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "hard": {
+            "losses": 0,
+            "matches": 0,
+            "sample_assessment": {
+              "alert_level": "NONE",
+              "eligible_for_comparison": false,
+              "label": "Não aplicável",
+              "status": "NOT_APPLICABLE"
+            },
+            "win_rate": null,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 2,
+            "matches": 3,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.333333,
+            "wins": 1
+          },
+          "year": 2022
+        },
+        {
+          "clay": {
+            "losses": 5,
+            "matches": 10,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 5
+          },
+          "grass": {
+            "losses": 1,
+            "matches": 1,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "hard": {
+            "losses": 8,
+            "matches": 16,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 8
+          },
+          "overall": {
+            "losses": 14,
+            "matches": 27,
+            "sample_assessment": {
+              "alert_level": "WARNING",
+              "eligible_for_comparison": true,
+              "label": "Amostra limitada",
+              "status": "LIMITED"
+            },
+            "win_rate": 0.481481,
+            "wins": 13
+          },
+          "year": 2023
+        },
+        {
+          "clay": {
+            "losses": 13,
+            "matches": 19,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.315789,
+            "wins": 6
+          },
+          "grass": {
+            "losses": 4,
+            "matches": 8,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 4
+          },
+          "hard": {
+            "losses": 7,
+            "matches": 14,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 7
+          },
+          "overall": {
+            "losses": 24,
+            "matches": 41,
+            "sample_assessment": {
+              "alert_level": "WARNING",
+              "eligible_for_comparison": true,
+              "label": "Amostra limitada",
+              "status": "LIMITED"
+            },
+            "win_rate": 0.414634,
+            "wins": 17
+          },
+          "year": 2024
+        },
+        {
+          "clay": {
+            "losses": 6,
+            "matches": 13,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.538462,
+            "wins": 7
+          },
+          "grass": {
+            "losses": 2,
+            "matches": 4,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 2
+          },
+          "hard": {
+            "losses": 6,
+            "matches": 6,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 14,
+            "matches": 23,
+            "sample_assessment": {
+              "alert_level": "WARNING",
+              "eligible_for_comparison": true,
+              "label": "Amostra limitada",
+              "status": "LIMITED"
+            },
+            "win_rate": 0.391304,
+            "wins": 9
+          },
+          "year": 2025
+        },
+        {
+          "clay": {
+            "losses": 6,
+            "matches": 8,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.25,
+            "wins": 2
+          },
+          "grass": {
+            "losses": 1,
+            "matches": 2,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.5,
+            "wins": 1
+          },
+          "hard": {
+            "losses": 1,
+            "matches": 1,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.0,
+            "wins": 0
+          },
+          "overall": {
+            "losses": 8,
+            "matches": 11,
+            "sample_assessment": {
+              "alert_level": "CRITICAL",
+              "eligible_for_comparison": false,
+              "label": "Amostra muito baixa",
+              "status": "VERY_LOW"
+            },
+            "win_rate": 0.272727,
+            "wins": 3
+          },
+          "year": 2026
+        }
+      ]
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 5,
+              "4": 5,
+              "5": 5,
+              "6": 3,
+              "7": 2
+            },
+            "mean_game_diff": 3.0,
+            "n": 7,
+            "win_rate_pct": 85.7,
+            "wins": 6
+          }
+        },
+        "losses": 1,
+        "mean_game_diff": 3.0,
+        "odds_band": "1.20-1.25",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 6
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.20-1.25",
+      "metric_id": "moneyline_odds_band_1_20_1_25",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 7,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.857143
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 4,
+              "4": 3,
+              "5": 2,
+              "6": 2,
+              "7": 0
+            },
+            "mean_game_diff": 3.0,
+            "n": 6,
+            "win_rate_pct": 83.3,
+            "wins": 5
+          }
+        },
+        "losses": 1,
+        "mean_game_diff": 3.0,
+        "odds_band": "1.26-1.30",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 5
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.26-1.30",
+      "metric_id": "moneyline_odds_band_1_26_1_30",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 6,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.833333
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 11,
+              "4": 9,
+              "5": 6,
+              "6": 5,
+              "7": 2
+            },
+            "mean_game_diff": 3.93,
+            "n": 14,
+            "win_rate_pct": 78.6,
+            "wins": 11
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 1
+            },
+            "mean_game_diff": 7.0,
+            "n": 1,
+            "win_rate_pct": 100.0,
+            "wins": 1
+          }
+        },
+        "losses": 3,
+        "mean_game_diff": 4.13,
+        "odds_band": "1.31-1.40",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 12
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.31-1.40",
+      "metric_id": "moneyline_odds_band_1_31_1_40",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 15,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.8
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 10,
+              "4": 7,
+              "5": 4,
+              "6": 2,
+              "7": 0
+            },
+            "mean_game_diff": 1.78,
+            "n": 18,
+            "win_rate_pct": 72.2,
+            "wins": 13
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -9.0,
+            "n": 1,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          }
+        },
+        "losses": 6,
+        "mean_game_diff": 1.21,
+        "odds_band": "1.41-1.50",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 13
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.41-1.50",
+      "metric_id": "moneyline_odds_band_1_41_1_50",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 19,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.684211
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 14,
+              "4": 13,
+              "5": 10,
+              "6": 9,
+              "7": 6
+            },
+            "mean_game_diff": 1.63,
+            "n": 27,
+            "win_rate_pct": 66.7,
+            "wins": 18
+          }
+        },
+        "losses": 9,
+        "mean_game_diff": 1.63,
+        "odds_band": "1.51-1.60",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 18
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.51-1.60",
+      "metric_id": "moneyline_odds_band_1_51_1_60",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 27,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.666667
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 18,
+              "4": 15,
+              "5": 7,
+              "6": 4,
+              "7": 3
+            },
+            "mean_game_diff": 0.72,
+            "n": 39,
+            "win_rate_pct": 64.1,
+            "wins": 25
+          }
+        },
+        "losses": 14,
+        "mean_game_diff": 0.78,
+        "odds_band": "1.61-1.80",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 26
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.61-1.80",
+      "metric_id": "moneyline_odds_band_1_61_1_80",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 40,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.65
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 14,
+              "4": 12,
+              "5": 11,
+              "6": 5,
+              "7": 2
+            },
+            "mean_game_diff": 1.96,
+            "n": 28,
+            "win_rate_pct": 78.6,
+            "wins": 22
+          }
+        },
+        "losses": 6,
+        "mean_game_diff": 1.96,
+        "odds_band": "1.81-2.00",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 22
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 1.81-2.00",
+      "metric_id": "moneyline_odds_band_1_81_2_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 28,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.785714
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 3,
+              "4": 2,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": 1.14,
+            "n": 7,
+            "win_rate_pct": 57.1,
+            "wins": 4
+          }
+        },
+        "losses": 3,
+        "mean_game_diff": 1.14,
+        "odds_band": "2.01-2.09",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 4
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 2.01-2.09",
+      "metric_id": "moneyline_odds_band_2_01_2_09",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 7,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.571429
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 5,
+              "4": 5,
+              "5": 5,
+              "6": 3,
+              "7": 2
+            },
+            "mean_game_diff": -0.33,
+            "n": 15,
+            "win_rate_pct": 46.7,
+            "wins": 7
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -1.5,
+            "n": 2,
+            "win_rate_pct": 50.0,
+            "wins": 1
+          }
+        },
+        "losses": 9,
+        "mean_game_diff": -0.47,
+        "odds_band": "2.10-2.30",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 8
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 2.10-2.30",
+      "metric_id": "moneyline_odds_band_2_10_2_30",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 17,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.470588
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 8,
+              "4": 5,
+              "5": 4,
+              "6": 2,
+              "7": 1
+            },
+            "mean_game_diff": -0.78,
+            "n": 23,
+            "win_rate_pct": 34.8,
+            "wins": 8
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -6.0,
+            "n": 1,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          }
+        },
+        "losses": 16,
+        "mean_game_diff": -1.0,
+        "odds_band": "2.31-2.60",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 8
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 2.31-2.60",
+      "metric_id": "moneyline_odds_band_2_31_2_60",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 24,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.333333
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 8,
+              "4": 7,
+              "5": 4,
+              "6": 2,
+              "7": 1
+            },
+            "mean_game_diff": -0.5,
+            "n": 24,
+            "win_rate_pct": 45.8,
+            "wins": 11
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 0
+            },
+            "mean_game_diff": 2.0,
+            "n": 2,
+            "win_rate_pct": 100.0,
+            "wins": 2
+          }
+        },
+        "losses": 13,
+        "mean_game_diff": -0.31,
+        "odds_band": "2.61-3.00",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 13
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 2.61-3.00",
+      "metric_id": "moneyline_odds_band_2_61_3_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 26,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.5
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -4.25,
+            "n": 4,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -5.0,
+            "n": 3,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          }
+        },
+        "losses": 7,
+        "mean_game_diff": -4.57,
+        "odds_band": "3.01-3.50",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 0
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 3.01-3.50",
+      "metric_id": "moneyline_odds_band_3_01_3_50",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 7,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.0
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -4.0,
+            "n": 6,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 1
+            },
+            "mean_game_diff": -3.25,
+            "n": 4,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          }
+        },
+        "losses": 10,
+        "mean_game_diff": -3.7,
+        "odds_band": "3.51-4.50",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 0
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 3.51-4.50",
+      "metric_id": "moneyline_odds_band_3_51_4_50",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 10,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.0
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -4.67,
+            "n": 6,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          }
+        },
+        "losses": 6,
+        "mean_game_diff": -4.67,
+        "odds_band": "4.51-6.00",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 0
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 4.51-6.00",
+      "metric_id": "moneyline_odds_band_4_51_6_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 6,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.0
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -5.4,
+            "n": 5,
+            "win_rate_pct": 0.0,
+            "wins": 0
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0
+            },
+            "mean_game_diff": -4.5,
+            "n": 2,
+            "win_rate_pct": 50.0,
+            "wins": 1
+          }
+        },
+        "losses": 6,
+        "mean_game_diff": -5.14,
+        "odds_band": "6.01-10.00",
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 1
+      },
+      "family": "historical_market_context",
+      "label": "Moneyline observada 6.01-10.00",
+      "metric_id": "moneyline_odds_band_6_01_10_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "CRITICAL",
+        "eligible_for_comparison": false,
+        "label": "Amostra muito baixa",
+        "status": "VERY_LOW"
+      },
+      "sample_size": 7,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.142857
+    },
+    {
+      "context": {
+        "definition": "bandas disponíveis de odd observada entre 1.20 e 2.00",
+        "losses": 40,
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 102
+      },
+      "family": "historical_market_context",
+      "label": "Quando a odd observada ficou entre 1.20 e 2.00",
+      "metric_id": "moneyline_observed_1_20_to_2_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 142,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.71831
+    },
+    {
+      "context": {
+        "by_format": {
+          "bo3": {
+            "cover_ge": {
+              "3": 24,
+              "4": 19,
+              "5": 13,
+              "6": 7,
+              "7": 4
+            },
+            "mean_game_diff": -1.37,
+            "n": 90,
+            "win_rate_pct": 33.3,
+            "wins": 30
+          },
+          "bo5": {
+            "cover_ge": {
+              "3": 2,
+              "4": 2,
+              "5": 2,
+              "6": 2,
+              "7": 1
+            },
+            "mean_game_diff": -3.53,
+            "n": 15,
+            "win_rate_pct": 26.7,
+            "wins": 4
+          }
+        },
+        "definition": "odd observada do jogador > 2.00",
+        "losses": 71,
+        "mean_game_diff": -1.68,
+        "odds_basis": "closing_preferred_opening_fallback",
+        "wins": 34
+      },
+      "family": "historical_market_context",
+      "label": "Quando a odd observada foi superior a 2.00",
+      "metric_id": "moneyline_observed_above_2_00",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "NONE",
+        "eligible_for_comparison": true,
+        "label": "Amostra sólida",
+        "status": "SOLID"
+      },
+      "sample_size": 105,
+      "source": "Valuebetennis",
+      "unit": "win_rate",
+      "value": 0.32381
+    },
+    {
+      "context": {
+        "window": 20
+      },
+      "family": "serve_return",
+      "label": "Pontos ganhos no primeiro serviço",
+      "metric_id": "serve_first_won_recent",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 20,
+      "source": "canonical_history_point_stats",
+      "unit": "rate",
+      "value": 0.757
+    },
+    {
+      "context": {
+        "window": 20
+      },
+      "family": "serve_return",
+      "label": "Break points salvos",
+      "metric_id": "serve_break_points_saved_recent",
+      "model_role": "DESCRIPTIVE_ONLY",
+      "sample_assessment": {
+        "alert_level": "WARNING",
+        "eligible_for_comparison": true,
+        "label": "Amostra limitada",
+        "status": "LIMITED"
+      },
+      "sample_size": 20,
+      "source": "canonical_history_point_stats",
+      "unit": "rate",
+      "value": 0.539
+    }
+  ],
+  "overall_sample": {
+    "alert_level": "NONE",
+    "eligible_for_comparison": true,
+    "label": "Amostra sólida",
+    "matches": 127,
+    "status": "SOLID"
+  },
+  "player": {
+    "country": null,
+    "current_points": 515,
+    "current_rank": 124,
+    "name": "Sebastian Ofner",
+    "player_id": null,
+    "ranking_as_of": "2026-07-21 00:00:00",
+    "tour": "atp"
+  },
+  "schema_version": 2
+}
