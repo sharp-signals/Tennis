@@ -33,7 +33,34 @@ class PlayerProfileV2BuilderTests(unittest.TestCase):
         self.assertEqual(profile["overall_sample"]["status"], "VERY_LOW")
         self.assertEqual(profile["alerts"][0]["code"], "PLAYER_SAMPLE_BELOW_20")
         self.assertEqual(profile["player"]["current_rank"], 25)
-        self.assertTrue(all(metric["model_role"] == "DESCRIPTIVE_ONLY" for metric in profile["metrics"]))
+        roles = {metric["model_role"] for metric in profile["metrics"]}
+        self.assertIn("MODEL_ACTIVE", roles)
+        self.assertIn("DESCRIPTIVE_ONLY", roles)
+
+    def test_context_splits_keep_samples_and_do_not_enter_model(self):
+        history = pd.DataFrame([
+            {
+                "winner_name": "Player A", "loser_name": "Player B",
+                "winner_rank": 12, "loser_rank": 2, "tourney_date": 20260102,
+                "tourney_level": "G", "best_of": 5, "surface": "Hard", "indoor": False,
+            },
+            {
+                "winner_name": "Player C", "loser_name": "Player A",
+                "winner_rank": 8, "loser_rank": 11, "tourney_date": 20260202,
+                "tourney_level": "M", "best_of": 3, "surface": "Hard", "indoor": True,
+            },
+        ])
+        metrics = []
+
+        player_profile_v2._append_context_metrics(metrics, history, "Player A")
+
+        by_id = {metric["metric_id"]: metric for metric in metrics}
+        self.assertEqual(by_id["opponent_level_top3"]["sample_size"], 1)
+        self.assertEqual(by_id["opponent_level_top10"]["sample_size"], 2)
+        self.assertEqual(by_id["tournament_level_grand_slam"]["context"]["wins"], 1)
+        self.assertEqual(by_id["format_bo5"]["sample_size"], 1)
+        self.assertEqual(by_id["venue_indoor_career"]["sample_size"], 1)
+        self.assertTrue(all(metric["model_role"] == "DESCRIPTIVE_ONLY" for metric in metrics))
 
     def test_builder_returns_none_for_unknown_player(self):
         with patch.object(player_profile_v2.fetch_data, "resolve_player_name", return_value=None):
