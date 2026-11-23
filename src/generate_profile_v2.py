@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unicodedata
 from pathlib import Path
+from typing import Iterable
 
 from . import fetch_data
 from .player_profile_contract import build_search_index_entry
@@ -39,9 +40,13 @@ def _write_json_atomic(path: Path, payload: object) -> None:
             temp_path.unlink()
 
 
-def rebuild_index(output_root: Path = OUTPUT_ROOT) -> Path:
+def rebuild_index(
+    output_root: Path = OUTPUT_ROOT,
+    profile_paths: Iterable[Path] | None = None,
+) -> Path:
     entries = []
-    for path in sorted(output_root.glob("*/*.json")):
+    paths = profile_paths if profile_paths is not None else output_root.glob("*/*.json")
+    for path in sorted(set(paths)):
         if path.name == "index.json":
             continue
         profile = json.loads(path.read_text(encoding="utf-8"))

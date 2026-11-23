@@ -37,6 +37,7 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "data/paper_trades.json", "data/market_ledger/", "data/match_identity/",
         "data/validation/", "data/dashboard/", "data/player_images.json",
         "data/player_images_review.json", "data/governance/", "knowledge/players/",
+        "data/player_profiles/", "docs/jogadores/",
     ),
     "odds-source": COMMON + (
         "data/odds_monitor/", "data/market_ledger/", "data/cache/",
