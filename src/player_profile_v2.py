@@ -26,14 +26,23 @@ from .player_profile_contract import (
 def _played_rows(history: pd.DataFrame, player: str) -> pd.DataFrame:
     if history.empty:
         return history.iloc[0:0].copy()
+    resolved = fetch_data.resolve_player_name(history, player)
+    if resolved is None:
+        return history.iloc[0:0].copy()
+    normalized = fetch_data._normalize_name(resolved)
+    identity_keys = {normalized}
+    for canonical, variants in fetch_data._HISTORICAL_EXACT_NAME_ALIASES.items():
+        family = {
+            fetch_data._normalize_name(canonical),
+            *(fetch_data._normalize_name(value) for value in variants),
+        }
+        if normalized in family:
+            identity_keys.update(family)
     winner = history.get("winner_name", pd.Series(index=history.index, dtype=object))
     loser = history.get("loser_name", pd.Series(index=history.index, dtype=object))
-    normalized = player.strip().casefold()
-    mask = (
-        winner.fillna("").astype(str).str.strip().str.casefold().eq(normalized)
-        | loser.fillna("").astype(str).str.strip().str.casefold().eq(normalized)
-    )
-    return history.loc[mask].copy()
+    winner_mask = winner.fillna("").map(fetch_data._normalize_name).isin(identity_keys)
+    loser_mask = loser.fillna("").map(fetch_data._normalize_name).isin(identity_keys)
+    return history.loc[winner_mask | loser_mask].copy()
 
 
 def _win_rate(wins: int, matches: int) -> float | None:
@@ -49,7 +58,9 @@ def _history_dates(frame: pd.DataFrame) -> pd.Series:
 
 def _rows_before(played: pd.DataFrame, cutoff: datetime) -> pd.DataFrame:
     if played.empty:
-        return played.copy()
+        rows = played.copy()
+        rows["_date"] = pd.Series(index=rows.index, dtype="datetime64[ns, UTC]")
+        return rows
     rows = played.copy()
     rows["_date"] = _history_dates(rows)
     return rows[rows["_date"].notna() & (rows["_date"] < pd.Timestamp(cutoff))].copy()
