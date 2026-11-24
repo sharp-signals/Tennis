@@ -117,6 +117,13 @@ CALIBRATION_FEATURE_PROFILES = {
             "return_points_won_recent_deviation_v1",
         ),
     },
+    "serve_return_points_recent_service_only_v2": {
+        "serve_return": (
+            "service_points_won_surface_margin_shrunk_v1",
+            "return_points_won_surface_margin_shrunk_v1",
+            "service_points_won_recent_deviation_v1",
+        ),
+    },
     "primary_base_for_serve_v1": {
         "serve_return": (
             "contextual_recent_result_core_v1",
@@ -489,6 +496,7 @@ def _directional_mask(columns: list[str], feature_profile: str) -> np.ndarray | 
         "serve_return_surface_points_shrunk_v1",
         "serve_return_surface_games_shrunk_v1",
         "serve_return_points_recent_deviation_v1",
+        "serve_return_points_recent_service_only_v2",
         "serve_return_exact_context_points_shrunk_v2",
         "serve_return_exact_context_recent_deviation_v2",
         "serve_return_surface_with_exact_context_modifier_v2",

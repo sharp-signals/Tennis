@@ -21,6 +21,7 @@ PROFILES = (
     "serve_return_surface_points_shrunk_v1",
     "serve_return_surface_games_shrunk_v1",
     "serve_return_points_recent_deviation_v1",
+    "serve_return_points_recent_service_only_v2",
 )
 
 

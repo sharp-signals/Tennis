@@ -7,7 +7,7 @@ def test_contract_selects_circuit_specific_profiles_and_stays_secondary():
         "universes": {
             "atp": {
                 "candidates": {
-                    "serve_return_points_recent_deviation_v1": candidate,
+                    "serve_return_points_recent_service_only_v2": candidate,
                 },
                 "incremental_after_primary_families": {
                     "status": "HOLDOUT_SUPPORTED",
@@ -27,10 +27,13 @@ def test_contract_selects_circuit_specific_profiles_and_stays_secondary():
     }
     contract = build_contract(comparison)
     assert contract["selected_profiles"]["atp"]["profile"].endswith(
-        "recent_deviation_v1",
+        "recent_service_only_v2",
     )
     assert contract["selected_profiles"]["wta"]["profile"].endswith(
         "surface_points_shrunk_v1",
     )
     assert contract["governance"]["standalone_candidate_prohibited"] is True
     assert contract["governance"]["fair_odd_fitted"] is False
+    assert contract["feature_contract"]["atp_recent_modifier"] == [
+        "90-day service deviation from surface baseline",
+    ]

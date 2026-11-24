@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 SELECTED = {
-    "atp": "serve_return_points_recent_deviation_v1",
+    "atp": "serve_return_points_recent_service_only_v2",
     "wta": "serve_return_surface_points_shrunk_v1",
 }
 
@@ -80,8 +80,10 @@ def build_contract(comparison: dict) -> dict:
             ],
             "atp_recent_modifier": [
                 "90-day service deviation from surface baseline",
-                "90-day return deviation from surface baseline",
             ],
+            "atp_removed_after_rolling_refit": (
+                "90-day return deviation from surface baseline"
+            ),
             "wta_recent_modifier": "diagnostic only; not holdout-supported",
             "hold_and_break": "diagnostic only; downstream alternative, never summed",
         },
