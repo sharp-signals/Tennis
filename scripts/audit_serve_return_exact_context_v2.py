@@ -38,6 +38,110 @@ CANDIDATES = (
     "serve_return_exact_context_recent_deviation_v2",
     "serve_return_surface_with_exact_context_modifier_v2",
 )
+EXACT_CONTEXTS = ("hard_indoor", "hard_outdoor", "clay", "grass")
+
+
+def _calibration_bins(
+    targets: np.ndarray, probabilities: np.ndarray, *, bins: int = 10,
+) -> list[dict]:
+    """Return compact reliability bins without using market information."""
+    truth = np.asarray(targets, dtype=float)
+    predicted = np.clip(np.asarray(probabilities, dtype=float), 0.0, 1.0)
+    result = []
+    for index in range(bins):
+        low = index / bins
+        high = (index + 1) / bins
+        selected = (predicted >= low) & (
+            (predicted < high) if index < bins - 1 else (predicted <= high)
+        )
+        if not selected.any():
+            continue
+        result.append({
+            "range": [round(low, 2), round(high, 2)],
+            "targets": int(selected.sum()),
+            "predicted_mean": round(float(predicted[selected].mean()), 6),
+            "observed_rate": round(float(truth[selected].mean()), 6),
+            "gap": round(float(
+                predicted[selected].mean() - truth[selected].mean()
+            ), 6),
+        })
+    return result
+
+
+def _paired_diagnostics(
+    holdout: list[dict], wanted: list[int], targets: np.ndarray,
+    baseline: np.ndarray, candidate: np.ndarray,
+) -> dict:
+    """Break paired results down by exact context and baseline favourite strength."""
+    contexts = [
+        str((holdout[index].get("diagnostics") or {}).get("surface_context"))
+        for index in wanted
+    ]
+    by_context = {}
+    for context in EXACT_CONTEXTS:
+        selected = np.asarray([value == context for value in contexts], dtype=bool)
+        if not selected.any():
+            continue
+        by_context[context] = {
+            "baseline": _metrics(
+                targets[selected], baseline[selected],
+                total_targets=int(selected.sum()),
+            ),
+            "candidate": _metrics(
+                targets[selected], candidate[selected],
+                total_targets=int(selected.sum()),
+            ),
+            "paired_gain": _paired_probability_gain(
+                targets[selected], baseline[selected], candidate[selected],
+            ),
+        }
+
+    favourite_is_a = baseline >= 0.5
+    favourite_targets = np.where(favourite_is_a, targets, 1.0 - targets)
+    baseline_favourite = np.where(favourite_is_a, baseline, 1.0 - baseline)
+    candidate_favourite = np.where(favourite_is_a, candidate, 1.0 - candidate)
+    strength_bands = {}
+    for label, low, high in (
+        ("near_even_50_60", 0.5, 0.6),
+        ("favourite_60_70", 0.6, 0.7),
+        ("strong_favourite_70_plus", 0.7, 1.000001),
+    ):
+        selected = (baseline_favourite >= low) & (baseline_favourite < high)
+        if not selected.any():
+            continue
+        strength_bands[label] = {
+            "targets": int(selected.sum()),
+            "baseline": _metrics(
+                favourite_targets[selected], baseline_favourite[selected],
+                total_targets=int(selected.sum()),
+            ),
+            "candidate": _metrics(
+                favourite_targets[selected], candidate_favourite[selected],
+                total_targets=int(selected.sum()),
+            ),
+            "paired_gain": _paired_probability_gain(
+                favourite_targets[selected], baseline_favourite[selected],
+                candidate_favourite[selected],
+            ),
+        }
+    return {
+        "by_exact_context": by_context,
+        "baseline_selected_favourite": {
+            "baseline": _metrics(
+                favourite_targets, baseline_favourite,
+                total_targets=len(favourite_targets),
+            ),
+            "candidate": _metrics(
+                favourite_targets, candidate_favourite,
+                total_targets=len(favourite_targets),
+            ),
+            "by_baseline_strength": strength_bands,
+        },
+        "calibration_bins_10": {
+            "baseline": _calibration_bins(targets, baseline),
+            "candidate": _calibration_bins(targets, candidate),
+        },
+    }
 
 
 def _enrich(rows: list[dict], frame) -> dict[str, int]:
@@ -161,6 +265,9 @@ def _audit(rows: list[dict]) -> dict:
             "baseline": _metrics(targets, baseline, total_targets=len(holdout)),
             "candidate": _metrics(targets, tested, total_targets=len(holdout)),
             "paired_gain": _paired_probability_gain(targets, baseline, tested),
+            "diagnostics": _paired_diagnostics(
+                holdout, wanted, targets, baseline, tested,
+            ),
             "candidate_coefficients": models[candidate].get("coefficients"),
         }
     return result
@@ -174,10 +281,11 @@ def main() -> int:
     args = parser.parse_args()
     os.environ["TENNISMYLIFE_CACHE_DIR"] = str(args.provider_cache)
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": "READ_ONLY_EXACT_CONTEXT_SERVE_RETURN_AUDIT",
         "market_used": False,
         "production_effect": False,
+        "promotion_authorized": False,
         "universes": {},
     }
     for universe in ("atp", "wta"):
