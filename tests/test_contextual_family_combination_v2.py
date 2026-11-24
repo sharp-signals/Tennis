@@ -97,6 +97,17 @@ def test_unknown_profile_family_is_rejected():
         raise AssertionError("unknown family override should fail closed")
 
 
+def test_serve_return_profile_is_changed_only_for_atp():
+    assert (
+        _effective_profiles("atp")["serve_return"]
+        == "serve_return_points_recent_service_only_v2"
+    )
+    assert (
+        _effective_profiles("wta")["serve_return"]
+        == "serve_return_surface_points_shrunk_v1"
+    )
+
+
 def test_default_model_version_remains_v2_in_public_signature():
     signature = inspect.signature(combine_contextual_families_v2)
     assert (

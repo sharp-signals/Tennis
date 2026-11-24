@@ -56,6 +56,18 @@ def test_serve_return_candidate_components_are_directionally_constrained():
     assert mask.tolist() == [True, True]
 
 
+def test_supported_atp_serve_return_profile_excludes_recent_return_deviation():
+    columns = [
+        "service_points_won_surface_margin_shrunk_v1",
+        "return_points_won_surface_margin_shrunk_v1",
+        "service_points_won_recent_deviation_v1",
+    ]
+    mask = _directional_mask(
+        columns, "serve_return_points_recent_service_only_v2",
+    )
+    assert mask.tolist() == [True, True, True]
+
+
 def test_exact_context_serve_candidates_are_directionally_constrained():
     columns = [
         "service_points_won_exact_context_margin_shrunk_v2",
