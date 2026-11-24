@@ -6,6 +6,7 @@ from src.contextual_structural_equation import (
     evaluate_structural_strength_v5,
     evaluate_structural_strength_v6,
     evaluate_structural_strength_v7,
+    evaluate_structural_strength_v8,
 )
 
 
@@ -261,3 +262,39 @@ def test_v7_keeps_v6_rank_and_points_for_players_outside_return_phase():
         "contextual_structural_points_log_ratio_v6",
     ):
         assert v7["candidate_features"][key] == v6["candidate_features"][key]
+
+
+def test_v8_exposes_only_typical_rank_information_not_in_current_rank():
+    aligned = evaluate_structural_strength_v8(
+        _player(20, typical=20), _player(100, typical=100),
+    )
+    friction = evaluate_structural_strength_v8(
+        _player(70, typical=20), _player(80, typical=100),
+    )
+    key = "contextual_structural_typical_rank_residual_v8"
+    assert abs(aligned["candidate_features"][key]) < 1e-9
+    assert friction["candidate_features"][key] > 1.0
+    assert friction["governance"]["production_effect"] is False
+
+
+def test_v8_unreliable_rank_history_attenuates_typical_rank_residual():
+    stable = evaluate_structural_strength_v8(
+        _player(70, typical=20, persistence=0.9, dispersion=0.05),
+        _player(80, typical=100, persistence=0.9, dispersion=0.05),
+    )
+    unstable = evaluate_structural_strength_v8(
+        _player(70, typical=20, persistence=0.1, dispersion=0.8),
+        _player(80, typical=100, persistence=0.9, dispersion=0.05),
+    )
+    key = "contextual_structural_typical_rank_residual_v8"
+    assert 0 < unstable["candidate_features"][key] < stable["candidate_features"][key]
+
+
+def test_v8_does_not_use_old_peak_as_typical_rank_strength():
+    player = _player(70, typical=70)
+    player["observed_peak_rank"] = 1
+    result = evaluate_structural_strength_v8(player, _player(80, typical=80))
+    assert result["candidate_features"][
+        "contextual_structural_typical_rank_residual_v8"
+    ] == 0.0
+    assert result["governance"]["old_peak_is_not_used"] is True

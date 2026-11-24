@@ -25,6 +25,7 @@ from .contextual_structural_equation import (
     evaluate_structural_strength_v5,
     evaluate_structural_strength_v6,
     evaluate_structural_strength_v7,
+    evaluate_structural_strength_v8,
 )
 from .contextual_ranking import summarize_return_context, summarize_weekly_rank_history
 from .contextual_surface import (
@@ -973,6 +974,7 @@ def _candidate_equation_features(
     structural_v5 = evaluate_structural_strength_v5(context_a, context_b)
     structural_v6 = evaluate_structural_strength_v6(context_a, context_b)
     structural_v7 = evaluate_structural_strength_v7(context_a, context_b)
+    structural_v8 = evaluate_structural_strength_v8(context_a, context_b)
     tier_recent_features, tier_recent_audit = _tier_reliable_recent_features(
         match_history_a, match_history_b,
         cutoff=cutoff, surface=surface, target_level=target_level,
@@ -1086,6 +1088,7 @@ def _candidate_equation_features(
     features.update(structural_v5.get("candidate_features", {}))
     features.update(structural_v6.get("candidate_features", {}))
     features.update(structural_v7.get("candidate_features", {}))
+    features.update(structural_v8.get("candidate_features", {}))
     return features, {
         "structural_strength": structural,
         "structural_strength_v2": structural_v2,
@@ -1094,6 +1097,7 @@ def _candidate_equation_features(
         "structural_strength_v5": structural_v5,
         "structural_strength_v6": structural_v6,
         "structural_strength_v7": structural_v7,
+        "structural_strength_v8": structural_v8,
         "surface_conditions": surface_result,
         "surface_conditions_v2": surface_result_v2,
         "surface_conditions_v3": surface_result_v3,
