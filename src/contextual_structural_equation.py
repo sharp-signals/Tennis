@@ -20,6 +20,7 @@ EQUATION_VERSION_V4 = "structural-context-v4-rank-bands"
 EQUATION_VERSION_V5 = "structural-context-v5-points-residual"
 EQUATION_VERSION_V6 = "structural-context-v6-representative-ranking"
 EQUATION_VERSION_V7 = "structural-context-v7.1-effective-return-contraction"
+EQUATION_VERSION_V8 = "structural-context-v8-typical-rank-residual-audit"
 
 
 @dataclass(frozen=True)
@@ -769,5 +770,96 @@ def evaluate_structural_strength_v7(
             "historical_level_is_context_not_restoration": True,
             "return_context_requires_long_layoff": True,
             "market_is_forbidden": True,
+        },
+    }
+
+
+def _historical_rank_reliability_v8(player: dict[str, Any]) -> float | None:
+    """Reliability of the active-year rank history, excluding current typicality."""
+    persistence = _finite(player.get("current_band_persistence_365d"))
+    dispersion = _finite(player.get("rank_log_iqr_365d"))
+    active_weeks = int(_positive(player.get("weekly_rank_observations_365d")) or 0)
+    if persistence is None or dispersion is None or active_weeks < 4:
+        return None
+    persistence = max(0.0, min(1.0, persistence))
+    stability = math.exp(-max(0.0, dispersion))
+    return math.sqrt(persistence * stability)
+
+
+def evaluate_structural_strength_v8(
+    player_a: dict[str, Any], player_b: dict[str, Any],
+    *, config: StructuralEquationV2Config | None = None,
+) -> dict[str, Any]:
+    """Expose only the active-year typical-rank information not in current rank.
+
+    This is an audit candidate.  It does not replace the current ranking and it
+    does not restore an old peak.  The residual is attenuated when the weekly
+    365-day history is sparse, unstable or not persistent.
+    """
+    base = evaluate_structural_strength_v7(player_a, player_b, config=config)
+    if base.get("status") != "READY":
+        return {**base, "equation_version": EQUATION_VERSION_V8}
+
+    components = dict(base.get("components") or {})
+    current_material = _finite(components.get("material_rank_core"))
+    typical_a = _positive(player_a.get("typical_rank_365d"))
+    typical_b = _positive(player_b.get("typical_rank_365d"))
+    reliability_a = _historical_rank_reliability_v8(player_a)
+    reliability_b = _historical_rank_reliability_v8(player_b)
+    neutral_log = math.log(1.25)
+    typical_raw = (
+        math.log(typical_b / typical_a)
+        if typical_a is not None and typical_b is not None else None
+    )
+    typical_material = (
+        math.copysign(max(0.0, abs(typical_raw) - neutral_log), typical_raw)
+        if typical_raw is not None and typical_raw else 0.0
+    ) if typical_raw is not None else None
+    bilateral_reliability = (
+        math.sqrt(reliability_a * reliability_b)
+        if reliability_a is not None and reliability_b is not None else None
+    )
+    residual = (
+        (typical_material - current_material) * bilateral_reliability
+        if typical_material is not None and current_material is not None
+        and bilateral_reliability is not None else None
+    )
+
+    features = {
+        **dict(base["candidate_features"]),
+        "contextual_structural_typical_rank_residual_v8": residual,
+    }
+    return {
+        **base,
+        "equation_version": EQUATION_VERSION_V8,
+        "candidate_features": {
+            key: None if value is None else round(float(value), 6)
+            for key, value in features.items()
+        },
+        "components": {
+            **components,
+            "typical_rank_material_core": (
+                None if typical_material is None else round(typical_material, 6)
+            ),
+            "typical_rank_residual_reliability_a": (
+                None if reliability_a is None else round(reliability_a, 6)
+            ),
+            "typical_rank_residual_reliability_b": (
+                None if reliability_b is None else round(reliability_b, 6)
+            ),
+            "typical_rank_residual_bilateral_reliability": (
+                None if bilateral_reliability is None
+                else round(bilateral_reliability, 6)
+            ),
+            "typical_rank_residual": (
+                None if residual is None else round(residual, 6)
+            ),
+        },
+        "governance": {
+            **base["governance"],
+            "typical_rank_is_residual_not_replacement": True,
+            "old_peak_is_not_used": True,
+            "candidate_requires_chronological_audit": True,
+            "production_effect": False,
         },
     }

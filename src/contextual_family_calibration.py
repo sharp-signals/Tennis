@@ -232,6 +232,31 @@ CALIBRATION_FEATURE_PROFILES = {
         ),
         "surface_conditions": ("contextual_surface_signal_v1",),
     },
+    "contextual_v9_atp_typical_rank_residual_audit": {
+        "structural_strength": (
+            "contextual_structural_material_rank_core_v6",
+            "contextual_structural_representative_rank_core_v6",
+            "contextual_structural_points_log_ratio_v6",
+            "contextual_structural_return_rank_contraction_v7",
+            "contextual_structural_return_points_contraction_v7",
+            "contextual_structural_return_friction_margin_v7",
+            "contextual_structural_inactivity_margin_v3",
+            "contextual_structural_typical_rank_residual_v8",
+        ),
+    },
+    "contextual_v8_wta_typical_rank_residual_audit": {
+        "structural_strength": (
+            "contextual_structural_material_rank_core_v6",
+            "contextual_structural_representative_rank_core_v6",
+            "contextual_structural_points_log_ratio_v6",
+            "contextual_structural_return_rank_contraction_v7",
+            "contextual_structural_return_points_contraction_v7",
+            "contextual_structural_return_friction_margin_v7",
+            "contextual_structural_trajectory_margin_v3",
+            "contextual_structural_inactivity_margin_v3",
+            "contextual_structural_typical_rank_residual_v8",
+        ),
+    },
     "contextual_v7_global_elo_atp_ab_v1": {
         "structural_strength": (
             "contextual_structural_material_rank_core_v6",
