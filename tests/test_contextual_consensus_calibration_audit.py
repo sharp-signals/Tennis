@@ -7,6 +7,7 @@ from scripts.audit_contextual_consensus_calibration import (
     _fair_band,
     _segment,
     _stage_trace,
+    _unanimous_low_probability_audit,
 )
 
 
@@ -114,6 +115,74 @@ class ContextualConsensusCalibrationAuditTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "PASSED")
         self.assertTrue(all(result["gates"].values()))
+
+    def test_low_unanimous_audit_traces_each_compressed_case(self):
+        def replay_row(date, probability):
+            contributions = {
+                "recent_form": 0.04,
+                "structural_strength": 0.03,
+                "surface_conditions": 0.06,
+                "matchup_h2h": 0.03,
+                "serve_return": 0.02,
+            }
+            return {
+                "event_date": date,
+                "player_a": "Alpha",
+                "player_b": "Beta",
+                "target_a_win": True,
+                "family_probabilities": {
+                    "recent_form": 0.54,
+                    "structural_strength": 0.53,
+                    "surface_conditions": 0.56,
+                    "matchup_h2h": 0.53,
+                    "serve_return": 0.52,
+                },
+                "pre_hierarchy_family_contributions": contributions,
+                "realized_family_contributions": contributions,
+                "calibrated_realized_family_contributions": contributions,
+                "realized_hierarchy_audit": {
+                    "policy": "TEST",
+                    "consensus_reinforcement": False,
+                    "both_primaries_active_and_aligned": True,
+                },
+                "diagnostics": {
+                    "rank_a": 10,
+                    "rank_b": 50,
+                    "surface_context": "hard_indoor",
+                    "target_tier": "500",
+                },
+                "samples": {"recent_a": 20, "recent_b": 20},
+                "family_states": {
+                    "recent_form": {
+                        "data_state": "AVAILABLE",
+                        "signal_state": "DIRECTIONAL",
+                    },
+                },
+                "expected_probability": probability,
+            }
+
+        rows = [
+            replay_row("2026-01-01", 0.60),
+            replay_row("2026-01-02", 0.70),
+        ]
+        records = _audit_records(
+            rows, [row["expected_probability"] for row in rows],
+            coefficients={},
+            calibrator={"method": "IDENTITY", "intercept": 0.0, "slope": 1.0},
+        )
+        result = _unanimous_low_probability_audit(records)
+        self.assertEqual(result["segment"]["sample"], 1)
+        self.assertEqual(result["cases"][0]["favorite"], "Alpha")
+        self.assertEqual(result["cases"][0]["favorite_fair_odd"], 1.667)
+        self.assertEqual(result["cases"][0]["ranking"]["favorite_rank"], 10)
+        self.assertIn(
+            "PRIMARY_BLOCK_NOT_ABOVE_SECONDARY_BLOCK_IN_MATCH",
+            result["cases"][0]["compression_flags"],
+        )
+        self.assertIn(
+            "UNANIMOUS_REINFORCEMENT_NOT_APPLIED",
+            result["cases"][0]["compression_flags"],
+        )
 
     def test_segment_reports_calibration_gap_without_refitting(self):
         result = _segment([
