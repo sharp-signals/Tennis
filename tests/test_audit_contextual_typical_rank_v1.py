@@ -7,6 +7,7 @@ from scripts.audit_contextual_typical_rank_v1 import (
     _residual_segments,
 )
 from src.contextual_family_calibration import CALIBRATION_FEATURE_PROFILES
+from src.contextual_family_calibration import _directional_mask
 
 
 class TypicalRankAuditTests(unittest.TestCase):
@@ -21,14 +22,34 @@ class TypicalRankAuditTests(unittest.TestCase):
                 ]["structural_strength"]
                 self.assertEqual(candidate[:-1], baseline)
                 self.assertEqual(candidate[-1], CANDIDATE_FEATURE)
+                baseline_columns = [
+                    value for feature in baseline
+                    for value in (feature, f"{feature}__missing")
+                ]
+                candidate_columns = [
+                    value for feature in candidate
+                    for value in (feature, f"{feature}__missing")
+                ]
+                baseline_mask = _directional_mask(
+                    baseline_columns, BASELINE_PROFILES[universe],
+                )
+                candidate_mask = _directional_mask(
+                    candidate_columns, CANDIDATE_PROFILES[universe],
+                )
+                self.assertEqual(
+                    candidate_mask[:len(baseline_mask)].tolist(),
+                    baseline_mask.tolist(),
+                )
+                self.assertTrue(candidate_mask[-2])
+                self.assertFalse(candidate_mask[-1])
 
     def test_residual_diagnostics_distinguish_material_opposition(self):
         import numpy as np
 
-        rows = [{
+        rows = [{"features": {
             CANDIDATE_FEATURE: -0.4,
             "contextual_structural_material_rank_core_v6": 0.8,
-        }]
+        }}]
         result = _residual_segments(
             rows, np.asarray([1.0]), np.asarray([0.6]), np.asarray([0.55]),
         )

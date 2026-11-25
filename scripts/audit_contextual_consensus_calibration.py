@@ -150,6 +150,117 @@ def _segment(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _stage_trace(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    values = list(rows)
+    if not values:
+        return {"sample": 0}
+
+    def mean(key: str) -> float:
+        return sum(float(row[key]) for row in values) / len(values)
+
+    below_1_60 = sum(
+        float(row["favorite_probability"]) <= 0.625 for row in values
+    )
+    return {
+        "sample": len(values),
+        "mean_pre_slope_probability_pct": round(
+            100.0 * mean("pre_slope_favorite_probability"), 2,
+        ),
+        "mean_post_slope_probability_pct": round(
+            100.0 * mean("combination_favorite_probability"), 2,
+        ),
+        "mean_final_probability_pct": round(
+            100.0 * mean("favorite_probability"), 2,
+        ),
+        "mean_final_fair_odd": round(mean("favorite_fair_odd"), 3),
+        "mean_primary_logit_contribution": round(
+            mean("primary_logit_contribution"), 6,
+        ),
+        "mean_secondary_logit_contribution": round(
+            mean("secondary_logit_contribution"), 6,
+        ),
+        "final_probability_le_62_5_count": below_1_60,
+        "final_probability_le_62_5_pct": round(
+            100.0 * below_1_60 / len(values), 2,
+        ),
+        "mean_final_calibration_shift_pp": round(
+            mean("final_calibration_shift_pp"), 3,
+        ),
+    }
+
+
+def _stage_grouped(
+    records: list[dict[str, Any]], key: str,
+) -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        groups[str(record[key])].append(record)
+    return {name: _stage_trace(rows) for name, rows in sorted(groups.items())}
+
+
+def _within_wilson(segment: dict[str, Any]) -> bool | None:
+    if int(segment.get("sample") or 0) < 30:
+        return None
+    interval = segment.get("observed_wilson_95_pct")
+    predicted = segment.get("predicted_pct")
+    if not interval or predicted is None:
+        return None
+    return float(interval[0]) <= float(predicted) <= float(interval[1])
+
+
+def _certification(
+    *, overall: dict[str, Any], primary: dict[str, Any],
+    unanimous: dict[str, Any], intensity: dict[str, Any],
+    coefficients: dict[str, float],
+) -> dict[str, Any]:
+    primary_names = ("recent_form", "structural_strength")
+    secondary_names = ("surface_conditions", "matchup_h2h", "serve_return")
+    primary_values = [abs(float(coefficients[name])) for name in primary_names]
+    secondary_values = [abs(float(coefficients[name])) for name in secondary_names]
+    ordered = [
+        intensity.get(name) for name in ("SLIGHT", "MODERATE", "STRONG", "DECISIVE")
+        if int((intensity.get(name) or {}).get("sample") or 0) >= 30
+    ]
+    monotonic = all(
+        float(left["predicted_pct"]) <= float(right["predicted_pct"]) + 1e-9
+        for left, right in zip(ordered, ordered[1:])
+    )
+    segment_checks = {
+        name: _within_wilson(value)
+        for name, value in intensity.items()
+        if int(value.get("sample") or 0) >= 30
+    }
+    gates = {
+        "each_primary_coefficient_above_each_secondary": (
+            min(primary_values) > max(secondary_values)
+        ),
+        "primary_coefficient_block_above_secondary_block": (
+            sum(primary_values) > sum(secondary_values)
+        ),
+        "overall_prediction_inside_observed_wilson_95": _within_wilson(overall),
+        "both_primary_aligned_inside_observed_wilson_95": _within_wilson(
+            primary["both_primary_aligned"]
+        ),
+        "unanimous_5_of_5_inside_observed_wilson_95": _within_wilson(unanimous),
+        "unanimous_predicted_probability_rises_with_primary_intensity": monotonic,
+        "unanimous_intensity_segments_inside_observed_wilson_95": all(
+            value is not False for value in segment_checks.values()
+        ),
+    }
+    return {
+        "status": (
+            "PASSED" if all(value is True for value in gates.values())
+            else "FAILED"
+        ),
+        "gates": gates,
+        "unanimous_intensity_segment_checks": segment_checks,
+        "scope": (
+            "historical calibration and hierarchy certification; individual "
+            "match prices still require regression and traceability checks"
+        ),
+    }
+
+
 def _rank_segment(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     values = [row for row in rows if row.get("rank_favorite_probability") is not None]
     sample = len(values)
@@ -185,6 +296,11 @@ def _audit_records(
         calibrated_contributions = row.get(
             "calibrated_realized_family_contributions"
         ) or {}
+        realized_contributions = row.get("realized_family_contributions") or {}
+        pre_slope_probability_a = _sigmoid(sum(
+            float(realized_contributions.get(family, 0.0))
+            for family in FAMILY_ORDER
+        ))
         final_logit = _logit(raw_probability)
         family_probability_for_favorite = {}
         family_contribution_for_favorite = {}
@@ -244,6 +360,26 @@ def _audit_records(
         records.append({
             "favorite_probability": favorite_probability,
             "favorite_won": target_a if favorite_side == "a" else not target_a,
+            "pre_slope_favorite_probability": (
+                pre_slope_probability_a
+                if favorite_side == "a" else 1.0 - pre_slope_probability_a
+            ),
+            "combination_favorite_probability": (
+                raw_probability if favorite_side == "a" else 1.0 - raw_probability
+            ),
+            "favorite_fair_odd": 1.0 / favorite_probability,
+            "primary_logit_contribution": sum(
+                family_contribution_for_favorite.get(family, 0.0)
+                for family in ("recent_form", "structural_strength")
+            ),
+            "secondary_logit_contribution": sum(
+                family_contribution_for_favorite.get(family, 0.0)
+                for family in ("surface_conditions", "matchup_h2h", "serve_return")
+            ),
+            "final_calibration_shift_pp": 100.0 * (
+                favorite_probability
+                - (raw_probability if favorite_side == "a" else 1.0 - raw_probability)
+            ),
             "fair_band": _fair_band(favorite_probability),
             "probability_band": _probability_band(favorite_probability),
             "active_families": len(active),
@@ -366,30 +502,45 @@ def audit_universe(
         row for row in records
         if row["active_families"] == 5 and row["aligned_families"] == 5
     ]
+    overall = _segment(records)
+    primary_alignment = {
+        "both_primary_aligned": _segment(
+            row for row in records if row["primary_aligned"]
+        ),
+        "not_both_primary_aligned": _segment(
+            row for row in records if not row["primary_aligned"]
+        ),
+    }
+    unanimous_segment = _segment(unanimous)
+    unanimous_intensity = _grouped(
+        unanimous, "strongest_primary_intensity",
+    )
     return {
         "holdout": {
             "from": chronology["holdout_from"],
             "through": chronology["evaluation_through"],
             "sample": len(records),
         },
-        "overall": _segment(records),
+        "overall": overall,
         "probability_bands": _grouped(records, "probability_band"),
         "fair_odd_bands": _grouped(records, "fair_band"),
         "surface_context": _grouped(records, "surface_context"),
         "tournament_tier": _grouped(records, "target_tier"),
         "family_consensus": _grouped(records, "consensus"),
-        "primary_alignment": {
-            "both_primary_aligned": _segment(
-                row for row in records if row["primary_aligned"]
-            ),
-            "not_both_primary_aligned": _segment(
-                row for row in records if not row["primary_aligned"]
-            ),
-        },
-        "unanimous_5_of_5": _segment(unanimous),
+        "primary_alignment": primary_alignment,
+        "unanimous_5_of_5": unanimous_segment,
         "unanimous_5_of_5_family_stage": _family_stage_summary(unanimous),
-        "unanimous_primary_intensity": _grouped(
+        "unanimous_primary_intensity": unanimous_intensity,
+        "unanimous_5_of_5_probability_trace": _stage_trace(unanimous),
+        "unanimous_probability_trace_by_primary_intensity": _stage_grouped(
             unanimous, "strongest_primary_intensity",
+        ),
+        "certification": _certification(
+            overall=overall,
+            primary=primary_alignment,
+            unanimous=unanimous_segment,
+            intensity=unanimous_intensity,
+            coefficients=combination["family_coefficients"],
         ),
         "ranking_favorite": {
             "overall": _rank_segment(records),
@@ -454,7 +605,7 @@ def build_audit(
     replay_cache_dir: Path | None = None,
 ) -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": "READ_ONLY_CHRONOLOGICAL_CALIBRATION_AUDIT",
         "model_version": release["global_release_id"],
         "configuration_fingerprint": release["configuration_fingerprint"],

@@ -2,9 +2,11 @@ import unittest
 
 from scripts.audit_contextual_consensus_calibration import (
     _audit_records,
+    _certification,
     _cross_grouped,
     _fair_band,
     _segment,
+    _stage_trace,
 )
 
 
@@ -39,6 +41,79 @@ class ContextualConsensusCalibrationAuditTests(unittest.TestCase):
             records[0]["primary_alignment_label"], "both_primary_aligned",
         )
         self.assertEqual(records[0]["consensus_label"], "unanimous_5_of_5")
+
+    def test_probability_trace_separates_hierarchy_slope_and_final_calibration(self):
+        row = {
+            "target_a_win": True,
+            "family_probabilities": {
+                "recent_form": 0.70,
+                "structural_strength": 0.65,
+                "surface_conditions": 0.55,
+                "matchup_h2h": 0.60,
+                "serve_return": 0.51,
+            },
+            "realized_family_contributions": {
+                "recent_form": 0.20,
+                "structural_strength": 0.25,
+                "surface_conditions": 0.05,
+                "matchup_h2h": 0.03,
+                "serve_return": 0.02,
+            },
+            "calibrated_realized_family_contributions": {
+                "recent_form": 0.22,
+                "structural_strength": 0.275,
+                "surface_conditions": 0.055,
+                "matchup_h2h": 0.033,
+                "serve_return": 0.022,
+            },
+        }
+        records = _audit_records(
+            [row], [0.65], coefficients={},
+            calibrator={"method": "IDENTITY", "intercept": 0.0, "slope": 1.0},
+        )
+        trace = _stage_trace(records)
+        self.assertEqual(trace["sample"], 1)
+        self.assertGreater(trace["mean_post_slope_probability_pct"], 50.0)
+        self.assertEqual(trace["mean_final_probability_pct"], 65.0)
+        self.assertGreater(
+            trace["mean_primary_logit_contribution"],
+            trace["mean_secondary_logit_contribution"],
+        )
+
+    def test_certification_requires_primary_hierarchy_and_monotonic_intensity(self):
+        def segment(probability, wins):
+            return _segment([
+                {
+                    "favorite_probability": probability,
+                    "favorite_won": index < wins,
+                }
+                for index in range(100)
+            ])
+
+        overall = segment(0.65, 65)
+        primary = {
+            "both_primary_aligned": segment(0.70, 70),
+            "not_both_primary_aligned": segment(0.55, 55),
+        }
+        intensity = {
+            "SLIGHT": segment(0.55, 55),
+            "MODERATE": segment(0.65, 65),
+            "STRONG": segment(0.75, 75),
+            "DECISIVE": segment(0.85, 85),
+        }
+        result = _certification(
+            overall=overall, primary=primary,
+            unanimous=segment(0.72, 72), intensity=intensity,
+            coefficients={
+                "recent_form": 0.40,
+                "structural_strength": 0.46,
+                "surface_conditions": 0.30,
+                "matchup_h2h": 0.12,
+                "serve_return": 0.12,
+            },
+        )
+        self.assertEqual(result["status"], "PASSED")
+        self.assertTrue(all(result["gates"].values()))
 
     def test_segment_reports_calibration_gap_without_refitting(self):
         result = _segment([
