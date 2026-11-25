@@ -10,9 +10,14 @@ from scripts.audit_contextual_low_consensus_candidates import (
 from src.contextual_family_combination_v2 import FAMILY_ORDER
 
 
-def _prediction_row(sign=1.0, *, missing_secondary=False):
+def _prediction_row(
+    sign=1.0, *, missing_secondary=False, primary_dominant=False,
+):
     raw = {
-        family: sign * (0.02 + 0.005 * index)
+        family: sign * (
+            0.08 if primary_dominant and index < 2 else 0.01
+            if primary_dominant else 0.02 + 0.005 * index
+        )
         for index, family in enumerate(FAMILY_ORDER)
     }
     if missing_secondary:
@@ -56,6 +61,18 @@ class LowConsensusCandidateAuditTests(unittest.TestCase):
         )
         self.assertGreater(weights[0], 0.0)
         self.assertGreater(weights[1], 0.2)
+
+    def test_primary_dominant_mask_requires_the_primary_block_to_lead(self):
+        features = _candidate_features(
+            [_prediction_row(), _prediction_row(primary_dominant=True)],
+            baseline_slope=1.0,
+        )
+        self.assertEqual(
+            features["primary_dominant_mask"].tolist(), [False, True],
+        )
+        self.assertEqual(
+            features["primary_dominant_bonus_feature"].tolist(), [0.0, 1.0],
+        )
 
     def test_favorite_segment_keeps_baseline_side_fixed(self):
         result = _favorite_segment(
