@@ -304,6 +304,10 @@ def _audit_records(
         final_logit = _logit(raw_probability)
         family_probability_for_favorite = {}
         family_contribution_for_favorite = {}
+        pre_hierarchy_contributions = row.get(
+            "pre_hierarchy_family_contributions"
+        ) or {}
+        pre_hierarchy_for_favorite = {}
         for family in FAMILY_ORDER:
             family_probability = family_probabilities.get(family)
             if family_probability is None:
@@ -326,6 +330,10 @@ def _audit_records(
             )
             family_contribution_for_favorite[family] = round(
                 contribution if favorite_side == "a" else -contribution, 8,
+            )
+            pre_hierarchy = float(pre_hierarchy_contributions.get(family, 0.0))
+            pre_hierarchy_for_favorite[family] = round(
+                pre_hierarchy if favorite_side == "a" else -pre_hierarchy, 8,
             )
         active = [value for value in directions.values() if value != "neutral"]
         aligned = sum(value == favorite_side for value in active)
@@ -358,6 +366,14 @@ def _audit_records(
             target_a if rank_favorite_side == "a" else not target_a
         )
         records.append({
+            "event_date": row.get("event_date"),
+            "player_a": row.get("player_a"),
+            "player_b": row.get("player_b"),
+            "favorite_side": favorite_side,
+            "favorite_name": row.get(f"player_{favorite_side}"),
+            "winner_name": (
+                row.get("player_a") if target_a else row.get("player_b")
+            ),
             "favorite_probability": favorite_probability,
             "favorite_won": target_a if favorite_side == "a" else not target_a,
             "pre_slope_favorite_probability": (
@@ -389,8 +405,17 @@ def _audit_records(
             "strongest_primary_intensity": strongest_primary,
             "family_probability_for_favorite": family_probability_for_favorite,
             "family_contribution_for_favorite": family_contribution_for_favorite,
+            "family_intensity_for_favorite": intensities,
+            "pre_hierarchy_contribution_for_favorite": (
+                pre_hierarchy_for_favorite
+            ),
+            "hierarchy_audit": row.get("realized_hierarchy_audit") or {},
+            "samples": row.get("samples") or {},
+            "family_states": row.get("family_states") or {},
             "surface_context": diagnostics.get("surface_context") or "unknown",
             "target_tier": diagnostics.get("target_tier") or "unknown",
+            "rank_a": rank_a,
+            "rank_b": rank_b,
             "rank_favorite_side": rank_favorite_side,
             "rank_favorite_probability": rank_favorite_probability,
             "rank_favorite_won": rank_favorite_won,
@@ -413,6 +438,145 @@ def _audit_records(
             ),
         })
     return records
+
+
+def _compression_flags(record: dict[str, Any]) -> list[str]:
+    flags = []
+    if record["strongest_primary_intensity"] in {"SLIGHT", "NONE"}:
+        flags.append("PRIMARY_INTENSITY_SLIGHT_OR_NONE")
+    if (
+        float(record["primary_logit_contribution"])
+        <= float(record["secondary_logit_contribution"])
+    ):
+        flags.append("PRIMARY_BLOCK_NOT_ABOVE_SECONDARY_BLOCK_IN_MATCH")
+    if float(record["pre_slope_favorite_probability"]) <= 0.625:
+        flags.append("PRE_SLOPE_PROBABILITY_AT_OR_BELOW_62_5")
+    if (
+        float(record["combination_favorite_probability"]) > 0.625
+        and float(record["favorite_probability"]) <= 0.625
+    ):
+        flags.append("FINAL_CALIBRATION_MOVED_BELOW_62_5")
+    if not bool(record["hierarchy_audit"].get("consensus_reinforcement")):
+        flags.append("UNANIMOUS_REINFORCEMENT_NOT_APPLIED")
+    return flags or ["NO_SINGLE_COMPRESSION_FLAG"]
+
+
+def _unanimous_low_probability_audit(
+    unanimous: list[dict[str, Any]],
+) -> dict[str, Any]:
+    compressed = [
+        row for row in unanimous
+        if float(row["favorite_probability"]) <= 0.625
+    ]
+    flag_counts: dict[str, int] = defaultdict(int)
+    cases = []
+    for row in sorted(
+        compressed,
+        key=lambda item: (
+            float(item["favorite_probability"]),
+            str(item.get("event_date") or ""),
+        ),
+    ):
+        flags = _compression_flags(row)
+        for flag in flags:
+            flag_counts[flag] += 1
+        diagnostics = {
+            "rank_a": row.get("rank_a"),
+            "rank_b": row.get("rank_b"),
+            "favorite_rank": None,
+            "opponent_rank": None,
+        }
+        if row.get("rank_a") is not None and row.get("rank_b") is not None:
+            favorite_rank = (
+                row.get("rank_a") if row["favorite_side"] == "a"
+                else row.get("rank_b")
+            )
+            opponent_rank = (
+                row.get("rank_b") if row["favorite_side"] == "a"
+                else row.get("rank_a")
+            )
+            diagnostics.update({
+                "favorite_rank": favorite_rank,
+                "opponent_rank": opponent_rank,
+            })
+        hierarchy = row["hierarchy_audit"]
+        cases.append({
+            "event_date": row.get("event_date"),
+            "player_a": row.get("player_a"),
+            "player_b": row.get("player_b"),
+            "favorite": row.get("favorite_name"),
+            "winner": row.get("winner_name"),
+            "favorite_won": bool(row["favorite_won"]),
+            "favorite_probability_pct": round(
+                100.0 * float(row["favorite_probability"]), 2,
+            ),
+            "favorite_fair_odd": round(float(row["favorite_fair_odd"]), 3),
+            "pre_slope_probability_pct": round(
+                100.0 * float(row["pre_slope_favorite_probability"]), 2,
+            ),
+            "post_slope_probability_pct": round(
+                100.0 * float(row["combination_favorite_probability"]), 2,
+            ),
+            "final_calibration_shift_pp": round(
+                float(row["final_calibration_shift_pp"]), 3,
+            ),
+            "strongest_primary_intensity": row["strongest_primary_intensity"],
+            "primary_logit_contribution": round(
+                float(row["primary_logit_contribution"]), 6,
+            ),
+            "secondary_logit_contribution": round(
+                float(row["secondary_logit_contribution"]), 6,
+            ),
+            "family_probability_for_favorite": {
+                family: round(100.0 * float(value), 2)
+                for family, value in row[
+                    "family_probability_for_favorite"
+                ].items()
+            },
+            "family_intensity_for_favorite": row[
+                "family_intensity_for_favorite"
+            ],
+            "pre_hierarchy_contribution_for_favorite": row[
+                "pre_hierarchy_contribution_for_favorite"
+            ],
+            "final_contribution_for_favorite": row[
+                "family_contribution_for_favorite"
+            ],
+            "surface_context": row["surface_context"],
+            "target_tier": row["target_tier"],
+            "ranking": diagnostics,
+            "samples": row["samples"],
+            "family_states": row["family_states"],
+            "hierarchy": {
+                "policy": hierarchy.get("policy"),
+                "consensus_reinforcement": hierarchy.get(
+                    "consensus_reinforcement"
+                ),
+                "both_primaries_active_and_aligned": hierarchy.get(
+                    "both_primaries_active_and_aligned"
+                ),
+                "secondary_clipping": hierarchy.get("secondary_clipping"),
+                "capped_families": hierarchy.get("capped_families") or [],
+            },
+            "compression_flags": flags,
+        })
+    return {
+        "definition": (
+            "all five active families aligned with the final model favorite "
+            "and final probability at or below 62.5% (fair odd >= 1.60)"
+        ),
+        "threshold_probability_pct": 62.5,
+        "segment": _segment(compressed),
+        "probability_trace": _stage_trace(compressed),
+        "family_stage": _family_stage_summary(compressed),
+        "by_primary_intensity": _grouped(
+            compressed, "strongest_primary_intensity",
+        ),
+        "by_surface_context": _grouped(compressed, "surface_context"),
+        "by_tournament_tier": _grouped(compressed, "target_tier"),
+        "compression_flag_counts": dict(sorted(flag_counts.items())),
+        "cases": cases,
+    }
 
 
 def _grouped(records: list[dict[str, Any]], key: str) -> dict[str, Any]:
@@ -535,6 +699,9 @@ def audit_universe(
         "unanimous_probability_trace_by_primary_intensity": _stage_grouped(
             unanimous, "strongest_primary_intensity",
         ),
+        "unanimous_5_of_5_low_probability_audit": (
+            _unanimous_low_probability_audit(unanimous)
+        ),
         "certification": _certification(
             overall=overall,
             primary=primary_alignment,
@@ -605,7 +772,7 @@ def build_audit(
     replay_cache_dir: Path | None = None,
 ) -> dict[str, Any]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "mode": "READ_ONLY_CHRONOLOGICAL_CALIBRATION_AUDIT",
         "model_version": release["global_release_id"],
         "configuration_fingerprint": release["configuration_fingerprint"],

@@ -33,7 +33,7 @@ jobs:
           python -m scripts.audit_contextual_consensus_calibration \
             --model data/models/fenzobot-contextual-2026-11.json \
             --replay-input-dir .tmp/contextual-rating-replay \
-            --output .tmp/contextual-fair-odd-certification-v2.json
+            --output .tmp/contextual-fair-odd-certification-v3.json
       - name: Testes específicos
         run: |
           python -m unittest \
@@ -48,6 +48,6 @@ jobs:
       - name: Guardar certificação
         uses: actions/upload-artifact@v7
         with:
-          name: contextual-fair-odd-certification-v2
-          path: .tmp/contextual-fair-odd-certification-v2.json
+          name: contextual-fair-odd-certification-v3
+          path: .tmp/contextual-fair-odd-certification-v3.json
           if-no-files-found: error
