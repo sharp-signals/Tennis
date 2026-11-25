@@ -23,7 +23,7 @@ jobs:
           path: .tmp/contextual-rating-replay
           key: contextual-rating-replay-v9-${{ hashFiles('src/contextual_family_replay.py', 'src/contextual_family_methodology.py') }}
       - name: Instalar dependências
-        run: pip install -r requirements.lock
+        run: pip install -r requirements.lock -r requirements-dev.txt
       - name: Confirmar replay existente
         run: |
           test -f .tmp/contextual-rating-replay/atp.jsonl.gz
