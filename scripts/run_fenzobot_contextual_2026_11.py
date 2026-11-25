@@ -11,7 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.run_contextual_shadow_v2 import _run_shadow_only
+from scripts.run_contextual_shadow_v2 import _run_shadow_only, _write_json_atomic
 from src.fenzobot_contextual_activation import ENV_NAME, activation_state
 from src.fenzobot_contextual_runtime import (
     DEFAULT_MODEL_PATH,
@@ -35,6 +35,11 @@ from src.contextual_rating_ab_v1 import (
     load_contract as load_rating_ab_contract,
     predict_candidates as predict_rating_ab_candidates,
 )
+from src.contextual_primary_dominant_ab_v1 import (
+    DEFAULT_MODEL_PATH as PRIMARY_DOMINANT_AB_MODEL_PATH,
+    collect_from_baseline_ledger as collect_primary_dominant_ab,
+    load_contract as load_primary_dominant_ab_contract,
+)
 
 
 SUMMARY_PATH = Path(
@@ -52,7 +57,7 @@ H2H_PATH = Path(
 
 
 def run_release_only(*, max_matches: int = 0, workers: int = 4) -> dict:
-    return _run_shadow_only(
+    summary = _run_shadow_only(
         max_matches=max_matches,
         workers=workers,
         activation_loader=activation_state,
@@ -80,6 +85,40 @@ def run_release_only(*, max_matches: int = 0, workers: int = 4) -> dict:
         comparison_appender=append_rating_ab_observations,
         comparison_ledger_path=RATING_AB_LEDGER_PATH,
     )
+    try:
+        experiment = load_primary_dominant_ab_contract(
+            PRIMARY_DOMINANT_AB_MODEL_PATH
+        )
+        expected = experiment["baseline_configuration_fingerprint"]
+        current = summary["configuration_fingerprint"]
+        if expected != current:
+            prospective = {
+                "status": "DISABLED_INCOMPATIBLE_BASELINE",
+                "reason_code": "PRIMARY_DOMINANT_AB_BASELINE_FINGERPRINT_MISMATCH",
+                "expected_baseline_fingerprint": expected,
+                "current_baseline_fingerprint": current,
+                "observations_added": 0,
+            }
+        else:
+            prospective = collect_primary_dominant_ab(experiment)
+            prospective["reason_code"] = "BASELINE_FINGERPRINT_MATCH"
+    except (OSError, TypeError, ValueError, KeyError) as exc:
+        prospective = {
+            "status": "DISABLED_FAIL_CLOSED",
+            "reason_code": type(exc).__name__,
+            "detail": str(exc)[:160],
+            "observations_added": 0,
+        }
+    summary["primary_dominant_ab"] = prospective
+    summary["primary_dominant_ab_isolation"] = {
+        "market_used": False,
+        "production_effect": False,
+        "reports_published": False,
+        "paper_created": False,
+        "green_created": False,
+    }
+    _write_json_atomic(SUMMARY_PATH, summary)
+    return summary
 
 
 def main() -> int:

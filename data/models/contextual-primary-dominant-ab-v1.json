@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "contextual-primary-dominant-ab-v1",
+  "mode": "PROSPECTIVE_SHADOW_AB_ONLY",
+  "universe": "atp",
+  "prospective_start_utc": "2026-11-26T00:00:00+00:00",
+  "baseline_release_id": "FENZOBOT_CONTEXTUAL_2026_11",
+  "baseline_configuration_fingerprint": "78e0d1874b5d039bb51e626bddb274282020b01129ac67d1c4bc9138208741e8",
+  "configuration_fingerprint": "ef01fc980d4c3e56e639331d19ed6e28da182215e60fe1d17aaec31af992247d",
+  "favorite_probability_ceiling": 0.625,
+  "eligibility": {
+    "all_five_families_active": true,
+    "all_five_families_unanimous": true,
+    "family_direction_matches_baseline_favorite": true,
+    "primary_realized_magnitude_above_secondary": true,
+    "direction_source": "frozen_family_probability",
+    "magnitude_source": "frozen_calibrated_realized_logit_contribution"
+  },
+  "candidate": {
+    "candidate_id": "atp-primary-dominant-shrunk-gap-v1",
+    "logit_bonus": 0.25889783,
+    "derivation": {
+      "historical_segment_sample": 46,
+      "historical_observed_favorite_probability": 0.7174,
+      "historical_baseline_favorite_probability": 0.602,
+      "full_observed_logit_gap": 0.51779565,
+      "predeclared_shrinkage": 0.5,
+      "post_selection_hypothesis": true
+    }
+  },
+  "market_used": false,
+  "production_effect": false,
+  "paper_eligible": false,
+  "green_eligible": false,
+  "promotion_authorized": false,
+  "prospective_confirmation_required": true
+}
