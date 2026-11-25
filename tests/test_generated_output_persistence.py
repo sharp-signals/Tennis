@@ -224,6 +224,23 @@ class GeneratedOutputPersistenceTests(unittest.TestCase):
                 git(root, "diff", "--cached", "--name-only"),
             )
 
+    def test_bot_profile_stages_primary_dominant_ab_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_repo(root)
+            ledger = root / (
+                "data/contextual_primary_dominant_ab_observations-v1.jsonl"
+            )
+            ledger.write_text(
+                '{"observation_id":"primary-one"}\n', encoding="utf-8"
+            )
+            self.assertEqual(
+                stage(root=root, profile="bot"),
+                [
+                    "data/contextual_primary_dominant_ab_observations-v1.jsonl"
+                ],
+            )
+
     def test_bot_profile_still_rejects_unrelated_generated_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

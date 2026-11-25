@@ -72,6 +72,25 @@ def test_global_release_empty_run_remains_isolated():
             return_value=0,
         ),
         patch(
+            "scripts.run_fenzobot_contextual_2026_11."
+            "load_primary_dominant_ab_contract",
+            return_value={
+                "baseline_configuration_fingerprint": (
+                    "global-test-fingerprint"
+                ),
+            },
+        ),
+        patch(
+            "scripts.run_fenzobot_contextual_2026_11."
+            "collect_primary_dominant_ab",
+            return_value={
+                "status": "ACTIVE",
+                "observations_built": 0,
+                "observations_added": 0,
+                "status_counts": {},
+            },
+        ),
+        patch(
             "scripts.run_fenzobot_contextual_2026_11.append_observations",
             return_value=0,
         ),
@@ -88,6 +107,9 @@ def test_global_release_empty_run_remains_isolated():
             return_value={"status": "WAITING_FOR_DATA", "rows": 0},
         ),
         patch("scripts.run_contextual_shadow_v2._write_json_atomic"),
+        patch(
+            "scripts.run_fenzobot_contextual_2026_11._write_json_atomic"
+        ),
     ):
         summary = run_release_only(max_matches=1)
     assert summary["model_version"] == "FENZOBOT_CONTEXTUAL_2026_11"
@@ -100,6 +122,13 @@ def test_global_release_empty_run_remains_isolated():
         "reason_code": "RATING_AB_BASELINE_FINGERPRINT_MISMATCH",
         "expected_baseline_fingerprint": "previous-generation-fingerprint",
         "current_baseline_fingerprint": "global-test-fingerprint",
+    }
+    assert summary["primary_dominant_ab"] == {
+        "status": "ACTIVE",
+        "observations_built": 0,
+        "observations_added": 0,
+        "status_counts": {},
+        "reason_code": "BASELINE_FINGERPRINT_MATCH",
     }
     assert summary["isolation"] == {
         "market_used": False,
