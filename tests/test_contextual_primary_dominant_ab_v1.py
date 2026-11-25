@@ -1,8 +1,7 @@
 import hashlib
 import json
+import unittest
 from pathlib import Path
-
-import pytest
 
 from src.contextual_primary_dominant_ab_v1 import (
     build_observation,
@@ -10,17 +9,6 @@ from src.contextual_primary_dominant_ab_v1 import (
     load_contract,
     predict_candidate,
 )
-
-
-def test_committed_contract_is_valid():
-    contract = load_contract()
-    assert contract["universe"] == "atp"
-    assert contract["production_effect"] is False
-    claimed = contract.pop("configuration_fingerprint")
-    material = json.dumps(
-        contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-    ).encode()
-    assert claimed == hashlib.sha256(material).hexdigest()
 
 
 def _contract():
@@ -80,58 +68,81 @@ def _baseline(*, shadow=None, analyzed="2027-01-02T10:00:00+00:00"):
     }
 
 
-def test_candidate_changes_only_the_eligible_atp_shadow_probability():
-    result = predict_candidate(_shadow(), _contract())
-    assert result["status"] == "ELIGIBLE"
-    assert result["baseline"]["probability_a"] == 0.602
-    assert result["candidate"]["probability_a"] == pytest.approx(0.6621082)
-    assert result["candidate"]["fair_odd_a"] == pytest.approx(1.5103)
-    assert result["production_effect"] is False
-    assert result["market_used"] is False
+class ContextualPrimaryDominantABTests(unittest.TestCase):
+    def test_committed_contract_is_valid(self):
+        contract = load_contract()
+        self.assertEqual(contract["universe"], "atp")
+        self.assertFalse(contract["production_effect"])
+        claimed = contract.pop("configuration_fingerprint")
+        material = json.dumps(
+            contract, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()
+        self.assertEqual(claimed, hashlib.sha256(material).hexdigest())
 
+    def test_candidate_changes_only_the_eligible_atp_shadow_probability(self):
+        result = predict_candidate(_shadow(), _contract())
+        self.assertEqual(result["status"], "ELIGIBLE")
+        self.assertEqual(result["baseline"]["probability_a"], 0.602)
+        self.assertAlmostEqual(result["candidate"]["probability_a"], 0.6621082)
+        self.assertAlmostEqual(result["candidate"]["fair_odd_a"], 1.5103)
+        self.assertFalse(result["production_effect"])
+        self.assertFalse(result["market_used"])
 
-def test_secondary_dominance_is_recorded_but_never_adjusted():
-    result = predict_candidate(
-        _shadow(secondary_dominant=True), _contract()
-    )
-    assert result["status"] == "NOT_ELIGIBLE"
-    assert "PRIMARY_BLOCK_NOT_DOMINANT" in result["reason_codes"]
-    assert result["candidate"] is None
+    def test_secondary_dominance_is_recorded_but_never_adjusted(self):
+        result = predict_candidate(
+            _shadow(secondary_dominant=True), _contract()
+        )
+        self.assertEqual(result["status"], "NOT_ELIGIBLE")
+        self.assertIn("PRIMARY_BLOCK_NOT_DOMINANT", result["reason_codes"])
+        self.assertIsNone(result["candidate"])
 
+    def test_only_post_start_atp_baselines_enter_the_experiment(self):
+        contract = _contract()
+        self.assertIsNone(build_observation(
+            _baseline(analyzed="2026-11-25T23:59:59+00:00"), contract
+        ))
+        wta = _baseline(shadow=_shadow(universe="wta"))
+        wta["tour"] = "wta"
+        self.assertIsNone(build_observation(wta, contract))
+        self.assertTrue(
+            build_observation(_baseline(), contract)["experiment"]["eligible"]
+        )
 
-def test_only_post_start_atp_baselines_enter_the_experiment():
-    contract = _contract()
-    assert build_observation(
-        _baseline(analyzed="2026-11-25T23:59:59+00:00"), contract
-    ) is None
-    wta = _baseline(shadow=_shadow(universe="wta"))
-    wta["tour"] = "wta"
-    assert build_observation(wta, contract) is None
-    assert build_observation(_baseline(), contract)["experiment"]["eligible"]
+    def test_collection_is_append_only_and_deduplicated(self):
+        with self.subTest("temporary append-only ledger"):
+            import tempfile
 
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir)
+                baseline_path = tmp_path / "baseline.jsonl"
+                output_path = tmp_path / "experiment.jsonl"
+                baseline_path.write_text(
+                    json.dumps(_baseline()) + "\n", encoding="utf-8"
+                )
+                first = collect_from_baseline_ledger(
+                    _contract(),
+                    baseline_path=baseline_path,
+                    output_path=output_path,
+                )
+                second = collect_from_baseline_ledger(
+                    _contract(),
+                    baseline_path=baseline_path,
+                    output_path=output_path,
+                )
+                self.assertEqual(first["observations_added"], 1)
+                self.assertEqual(first["status_counts"], {"ELIGIBLE": 1})
+                self.assertEqual(second["observations_added"], 0)
+                self.assertEqual(
+                    len(output_path.read_text(encoding="utf-8").splitlines()), 1
+                )
 
-def test_collection_is_append_only_and_deduplicated(tmp_path: Path):
-    baseline_path = tmp_path / "baseline.jsonl"
-    output_path = tmp_path / "experiment.jsonl"
-    baseline_path.write_text(
-        json.dumps(_baseline()) + "\n", encoding="utf-8"
-    )
-    first = collect_from_baseline_ledger(
-        _contract(), baseline_path=baseline_path, output_path=output_path,
-    )
-    second = collect_from_baseline_ledger(
-        _contract(), baseline_path=baseline_path, output_path=output_path,
-    )
-    assert first["observations_added"] == 1
-    assert first["status_counts"] == {"ELIGIBLE": 1}
-    assert second["observations_added"] == 0
-    assert len(output_path.read_text(encoding="utf-8").splitlines()) == 1
+    def test_contract_rejects_any_operational_authorization(self):
+        import tempfile
 
-
-def test_contract_rejects_any_operational_authorization(tmp_path: Path):
-    contract = _contract()
-    contract["paper_eligible"] = True
-    path = tmp_path / "model.json"
-    path.write_text(json.dumps(contract), encoding="utf-8")
-    with pytest.raises(ValueError, match="isolation invariant"):
-        load_contract(path)
+        contract = _contract()
+        contract["paper_eligible"] = True
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "model.json"
+            path.write_text(json.dumps(contract), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "isolation invariant"):
+                load_contract(path)
