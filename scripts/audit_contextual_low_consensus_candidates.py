@@ -124,8 +124,10 @@ def _candidate_features(
     base_logits = []
     bonus_features = []
     primary_floor_logits = []
+    primary_dominant_bonus_features = []
     unanimous_mask = []
     low_mask = []
+    primary_dominant_mask = []
     for row in prediction_rows:
         raw = row.get("pre_hierarchy_family_contributions") or {}
         realized = row.get("realized_family_contributions") or {}
@@ -150,17 +152,28 @@ def _candidate_features(
         secondary = sum(abs(float(realized.get(family, 0.0)))
                         for family in SECONDARY_FAMILIES)
         floor_adjustment = max(0.0, secondary - primary) if low else 0.0
+        primary_dominant = low and primary > secondary
         base_logits.append(base)
         bonus_features.append(sign if low else 0.0)
         primary_floor_logits.append(base + sign * floor_adjustment)
+        primary_dominant_bonus_features.append(
+            sign if primary_dominant else 0.0
+        )
         unanimous_mask.append(unanimous)
         low_mask.append(low)
+        primary_dominant_mask.append(primary_dominant)
     return {
         "base_logit": np.asarray(base_logits, dtype=float),
         "bonus_feature": np.asarray(bonus_features, dtype=float),
         "primary_floor_logit": np.asarray(primary_floor_logits, dtype=float),
+        "primary_dominant_bonus_feature": np.asarray(
+            primary_dominant_bonus_features, dtype=float,
+        ),
         "unanimous_mask": np.asarray(unanimous_mask, dtype=bool),
         "low_consensus_mask": np.asarray(low_mask, dtype=bool),
+        "primary_dominant_mask": np.asarray(
+            primary_dominant_mask, dtype=bool,
+        ),
     }
 
 
