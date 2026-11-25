@@ -38,6 +38,84 @@ from src.contextual_family_combination_v2 import _fit_family_bundle
 
 
 DEFAULT_MODEL = Path("data/models/fenzobot-contextual-2026-11.json")
+PRIMARY_FAMILIES = ("recent_form", "structural_strength")
+SECONDARY_FAMILIES = ("surface_conditions", "matchup_h2h", "serve_return")
+
+
+def _intensity_label(delta_pp: float) -> str:
+    value = abs(float(delta_pp))
+    if value < 3.0:
+        return "SLIGHT"
+    if value < 7.0:
+        return "MODERATE"
+    if value < 12.0:
+        return "STRONG"
+    return "DECISIVE"
+
+
+def _low_consensus_case_records(
+    rows: list[dict[str, Any]], targets: np.ndarray,
+    probabilities: np.ndarray, features: dict[str, np.ndarray], *,
+    baseline_slope: float, fold_name: str,
+) -> list[dict[str, Any]]:
+    records = []
+    for index, (row, target, probability) in enumerate(
+        zip(rows, targets, probabilities)
+    ):
+        if not bool(features["low_consensus_mask"][index]):
+            continue
+        side_a = float(probability) >= 0.5
+        favorite_probability = max(float(probability), 1.0 - float(probability))
+        direction = 1.0 if side_a else -1.0
+        realized = row.get("realized_family_contributions") or {}
+        contributions = {
+            family: direction * baseline_slope * float(realized.get(family, 0.0))
+            for family in (*PRIMARY_FAMILIES, *SECONDARY_FAMILIES)
+        }
+        total_logit_a = baseline_slope * float(features["base_logit"][index])
+        intensities = {}
+        for family, contribution_for_favorite in contributions.items():
+            contribution_a = direction * contribution_for_favorite
+            probability_a_without = float(_sigmoid(
+                total_logit_a - contribution_a
+            ))
+            favorite_without = (
+                probability_a_without if side_a else 1.0 - probability_a_without
+            )
+            intensities[family] = _intensity_label(
+                100.0 * (favorite_probability - favorite_without)
+            )
+        strongest_primary = next(
+            label for label in ("DECISIVE", "STRONG", "MODERATE", "SLIGHT")
+            if label in {intensities[family] for family in PRIMARY_FAMILIES}
+        )
+        diagnostics = row.get("diagnostics") or {}
+        rank_a = diagnostics.get("rank_a")
+        rank_b = diagnostics.get("rank_b")
+        favorite_rank = rank_a if side_a else rank_b
+        opponent_rank = rank_b if side_a else rank_a
+        samples = row.get("samples") or {}
+        records.append({
+            "fold": fold_name,
+            "event_date": row.get("event_date"),
+            "favorite": row.get("player_a") if side_a else row.get("player_b"),
+            "opponent": row.get("player_b") if side_a else row.get("player_a"),
+            "favorite_won": bool(target) if side_a else not bool(target),
+            "favorite_probability": favorite_probability,
+            "strongest_primary_intensity": strongest_primary,
+            "primary_logit_contribution": sum(
+                contributions[family] for family in PRIMARY_FAMILIES
+            ),
+            "secondary_logit_contribution": sum(
+                contributions[family] for family in SECONDARY_FAMILIES
+            ),
+            "surface_context": diagnostics.get("surface_context") or "unknown",
+            "target_tier": diagnostics.get("target_tier") or "unknown",
+            "favorite_rank": favorite_rank,
+            "opponent_rank": opponent_rank,
+            "h2h_sample": int(samples.get("h2h") or 0),
+        })
+    return records
 
 
 def _rolling_decision(
@@ -117,6 +195,10 @@ def _fit_fold(
         targets, baseline_probability, candidate_probability,
         test_features["low_consensus_mask"],
     )
+    case_records = _low_consensus_case_records(
+        test_rows, targets, baseline_probability, test_features,
+        baseline_slope=baseline_slope, fold_name=fold["name"],
+    )
     return {
         "name": fold["name"],
         "train_through": fold["train"][-1]["event_date"],
@@ -152,6 +234,7 @@ def _fit_fold(
         "_candidate_probability": candidate_probability,
         "_focused_mask": test_features["low_consensus_mask"],
         "_unanimous_mask": test_features["unanimous_mask"],
+        "_case_records": case_records,
     }
 
 
