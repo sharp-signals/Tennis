@@ -45,7 +45,8 @@ def _residual_segments(
 ) -> dict[str, Any]:
     buckets: dict[str, list[int]] = {}
     for index, row in enumerate(rows):
-        value = row.get(CANDIDATE_FEATURE)
+        features = row.get("features") or {}
+        value = features.get(CANDIDATE_FEATURE)
         if value is None:
             labels = ("unavailable",)
         else:
@@ -58,7 +59,9 @@ def _residual_segments(
                 strength = "material_0_25_to_0_75"
             else:
                 strength = "large_ge_0_75"
-            current = row.get("contextual_structural_material_rank_core_v6")
+            current = features.get(
+                "contextual_structural_material_rank_core_v6"
+            )
             disagreement = (
                 current is not None and abs(float(current)) > 1e-12
                 and float(value) * float(current) < 0.0
@@ -129,6 +132,7 @@ def audit_universe(rows: list[dict], *, universe: str, release: dict) -> dict:
             ]),
             allow_missingness_vote=False,
         )
+        structural_model = candidate_models["structural_strength"]
         candidate_model = copy.deepcopy(combination)
         candidate_model["runtime_family_models"] = candidate_models
         candidate, candidate_slope = _calibrated_prediction(
@@ -147,6 +151,16 @@ def audit_universe(rows: list[dict], *, universe: str, release: dict) -> dict:
             "targets": len(targets),
             "baseline_slope": round(float(baseline_slope), 8),
             "candidate_slope": round(float(candidate_slope), 8),
+            "candidate_structural_model": {
+                "status": structural_model.get("status"),
+                "feature_available": structural_model.get(
+                    "preprocessor", {}
+                ).get("features", {}).get(CANDIDATE_FEATURE, {}).get(
+                    "available"
+                ),
+                "columns": structural_model.get("columns"),
+                "weights": structural_model.get("weights"),
+            },
             "paired_gain": _paired_probability_gain(
                 targets, baseline, candidate,
             ),
